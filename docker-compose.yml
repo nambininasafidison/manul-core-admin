@@ -1,0 +1,106 @@
+# ==============================================================================
+# Manul Core Admin - Docker Compose Configuration
+# ==============================================================================
+#
+# Development: docker compose up -d
+# Production:  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# ==============================================================================
+
+services:
+  # ===========================================================================
+  # Manul Core Admin Frontend
+  # ===========================================================================
+  manul-admin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PUBLIC_API_URL: ${PUBLIC_API_URL:-http://manul-backend:8080}
+        PUBLIC_ENV: ${PUBLIC_ENV:-development}
+    container_name: manul-admin
+    restart: unless-stopped
+    ports:
+      - '${ADMIN_PORT:-5173}:5173'
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PUBLIC_API_URL=${PUBLIC_API_URL:-http://manul-backend:8080}
+      - PUBLIC_ENV=${PUBLIC_ENV:-development}
+      - PUBLIC_ADMIN_SECRET=${PUBLIC_ADMIN_SECRET:-}
+      - PUBLIC_SESSION_TIMEOUT=${PUBLIC_SESSION_TIMEOUT:-3600}
+      - PUBLIC_REQUIRE_2FA=${PUBLIC_REQUIRE_2FA:-true}
+      - PUBLIC_WEBSOCKET_ENABLED=${PUBLIC_WEBSOCKET_ENABLED:-true}
+    networks:
+      - manul-network
+    depends_on:
+      manul-backend:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5173/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # ===========================================================================
+  # Manul Core Backend (référence - déjà déployé séparément normalement)
+  # ===========================================================================
+  manul-backend:
+    image: manulcore/backend:latest
+    container_name: manul-backend
+    restart: unless-stopped
+    ports:
+      - '${BACKEND_PORT:-8080}:8080'
+    environment:
+      - RUST_LOG=${RUST_LOG:-info}
+      - DATABASE_URL=${DATABASE_URL:-postgres://manul:manul@postgres:5432/manul}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+    networks:
+      - manul-network
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8080/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ===========================================================================
+  # Nginx Reverse Proxy (optionnel, pour SSL termination)
+  # ===========================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: manul-admin-nginx
+    restart: unless-stopped
+    ports:
+      - '${NGINX_HTTP_PORT:-80}:80'
+      - '${NGINX_HTTPS_PORT:-443}:443'
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - manul-network
+    depends_on:
+      - manul-admin
+    profiles:
+      - production
+
+networks:
+  manul-network:
+    driver: bridge
+    name: manul-core-network
+    external: true
+
+# ==============================================================================
+# Volumes (si nécessaire pour cache ou logs)
+# ==============================================================================
+volumes:
+  admin-logs:
+    driver: local

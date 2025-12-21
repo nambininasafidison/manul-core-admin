@@ -1,0 +1,39 @@
+# ==============================================================================
+# Manul Core Admin - ConfigMap
+# ==============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: manul-admin-config
+  namespace: manul-admin
+  labels:
+    app.kubernetes.io/name: manul-admin
+    app.kubernetes.io/component: config
+data:
+  # API Configuration
+  PUBLIC_API_URL: 'https://api.manulcore.io'
+  PUBLIC_ENV: 'production'
+
+  # Authentication
+  PUBLIC_SESSION_TIMEOUT: '3600'
+  PUBLIC_REQUIRE_2FA: 'true'
+  PUBLIC_TOTP_ENABLED: 'true'
+  PUBLIC_HARDWARE_KEY_ENABLED: 'true'
+
+  # Security
+  PUBLIC_MAX_LOGIN_ATTEMPTS: '5'
+  PUBLIC_LOCKOUT_DURATION: '900'
+  PUBLIC_CSP_ENABLED: 'true'
+
+  # Features
+  PUBLIC_REAL_TIME_UPDATES: 'true'
+  PUBLIC_WEBSOCKET_ENABLED: 'true'
+  PUBLIC_EXPORT_ENABLED: 'true'
+
+  # Rate Limiting
+  PUBLIC_RATE_LIMIT_REQUESTS: '100'
+  PUBLIC_RATE_LIMIT_WINDOW: '60'
+
+  # Monitoring
+  PUBLIC_SENTRY_ENABLED: 'false'
+  PUBLIC_ANALYTICS_ENABLED: 'false'

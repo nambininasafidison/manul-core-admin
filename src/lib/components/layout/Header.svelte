@@ -2,7 +2,6 @@
   import { goto } from '$app/navigation';
   import { Button } from '$lib/components/ui';
   import { authStore } from '$lib/stores';
-  import { formatRelativeTime } from '$lib/utils';
   import { Bell, LogOut, Menu, PanelLeft, Shield } from 'lucide-svelte';
 
   interface Props {
@@ -38,16 +37,6 @@
 
   <!-- Right: Actions -->
   <div class="flex items-center gap-3">
-    <!-- Session Info -->
-    {#if $authStore.user}
-      <div class="hidden text-right text-xs text-[hsl(var(--muted-foreground))] sm:block">
-        <p>User: {$authStore.user.username}</p>
-        {#if $authStore.user.lastLogin}
-          <p>Last login: {formatRelativeTime($authStore.user.lastLogin)}</p>
-        {/if}
-      </div>
-    {/if}
-
     <!-- System Status -->
     <div
       class="hidden items-center gap-2 rounded-full bg-[hsl(var(--success))]/20 px-3 py-1.5 text-sm sm:flex"

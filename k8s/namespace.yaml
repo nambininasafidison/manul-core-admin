@@ -1,0 +1,11 @@
+# ==============================================================================
+# Manul Core Admin - Kubernetes Namespace
+# ==============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: manul-admin
+  labels:
+    app.kubernetes.io/name: manul-admin
+    app.kubernetes.io/part-of: manul-core
+    environment: production

@@ -1,7 +1,14 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { Alert, Button, Card } from '$lib/components/ui';
-  import { authStore, lastActivityStore } from '$lib/stores';
+  import {
+    authStore,
+    lastActivityStore,
+    dashboardStore,
+    systemStats as statsStore,
+    motherSupreme,
+    isLoading,
+  } from '$lib/stores';
   import { formatCurrency, formatNumber, formatRelativeTime } from '$lib/utils';
   import {
     Bot,
@@ -11,6 +18,8 @@
     Database,
     DollarSign,
     HardDrive,
+    Loader2,
+    RefreshCw,
     Server,
     Shield,
     TrendingUp,
@@ -26,6 +35,9 @@
       return;
     }
 
+    // Load dashboard data
+    dashboardStore.loadAll();
+
     // Update activity on any interaction
     const updateActivity = () => {
       lastActivityStore.set(Date.now());
@@ -40,18 +52,10 @@
     };
   });
 
-  // Mock system stats
-  const systemStats = {
-    totalBots: 1247,
-    activeBots: 892,
-    totalUsers: 15483,
-    activeRentals: 3421,
-    totalCapital: 2847392.45,
-    totalProfit: 487293.12,
-    uptimeSeconds: 2592000, // 30 days
-    cpuUsage: 34,
-    memoryUsage: 52,
-    motherSupremeCapital: 892341.67,
+  // Use store for system stats
+  $: systemStats = {
+    ...$statsStore,
+    motherSupremeCapital: $motherSupreme?.capital ?? 892341.67,
   };
 
   const recentActivity = [
@@ -97,6 +101,10 @@
     goto('/login');
   }
 
+  function handleRefresh() {
+    dashboardStore.loadAll();
+  }
+
   function formatUptime(seconds: number): string {
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);
@@ -111,13 +119,23 @@
 <!-- Main Content -->
 <main class="mx-auto max-w-7xl p-4 lg:p-6">
   <!-- Welcome Section -->
-  <div class="mb-8">
-    <h2 class="text-2xl font-bold text-[hsl(var(--foreground))]">
-      Welcome back, {$authStore.user?.username}
-    </h2>
-    <p class="text-[hsl(var(--muted-foreground))]">
-      Here's what's happening with Manul Core today.
-    </p>
+  <div class="mb-8 flex items-center justify-between">
+    <div>
+      <h2 class="text-2xl font-bold text-[hsl(var(--foreground))]">
+        Welcome back, {$authStore.user?.username}
+      </h2>
+      <p class="text-[hsl(var(--muted-foreground))]">
+        Here's what's happening with Manul Core today.
+      </p>
+    </div>
+    <Button variant="outline" onclick={handleRefresh} disabled={$isLoading}>
+      {#if $isLoading}
+        <Loader2 class="h-4 w-4 animate-spin" />
+      {:else}
+        <RefreshCw class="h-4 w-4" />
+      {/if}
+      <span class="ml-2">Refresh</span>
+    </Button>
   </div>
 
   <!-- Stats Grid -->
