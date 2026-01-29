@@ -1,38 +1,118 @@
-# sv
+# ManulCore Admin Panel
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Interface d'administration pour la plateforme ManulCore.
 
-## Creating a project
+## Stack Technique
 
-If you're seeing this, you've probably already done this step. Congrats!
+- **Framework**: SvelteKit 2.0
+- **UI**: Svelte 5, TailwindCSS 4
+- **Auth**: Argon2 + TOTP + Hardware Keys
+- **Validation**: Zod
+- **State**: Svelte Stores
 
-```sh
-# create a new project in the current directory
-npx sv create
+## Structure
 
-# create a new project in my-app
-npx sv create my-app
+```
+src/
+├── lib/
+│   ├── components/     # Composants réutilisables
+│   ├── stores/         # State management
+│   ├── api/            # Client API
+│   ├── utils/          # Utilitaires
+│   └── types/          # Types TypeScript
+├── routes/
+│   ├── +layout.svelte
+│   ├── +page.svelte
+│   ├── dashboard/      # Tableau de bord
+│   ├── bots/           # Gestion bots
+│   ├── users/          # Gestion utilisateurs
+│   ├── rentals/        # Locations
+│   ├── finance/        # Finance
+│   ├── security/       # Sécurité
+│   ├── audit/          # Logs d'audit
+│   └── settings/       # Paramètres
+└── static/
 ```
 
-## Developing
+## Pages
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+| Route         | Description                          |
+| ------------- | ------------------------------------ |
+| `/dashboard`  | Vue d'ensemble, métriques temps réel |
+| `/bots`       | Liste, création, modification bots   |
+| `/bots/[id]`  | Détails bot, stats, contrôles        |
+| `/users`      | Liste utilisateurs, recherche        |
+| `/users/[id]` | Profil utilisateur, historique       |
+| `/rentals`    | Locations actives, historique        |
+| `/finance`    | Revenus, transactions, distribution  |
+| `/security`   | Alertes, menaces, blocages IP        |
+| `/audit`      | Logs système, actions admin          |
+| `/settings`   | Configuration système                |
 
-```sh
+## Composants
+
+| Composant   | Usage                      |
+| ----------- | -------------------------- |
+| `DataTable` | Tableaux paginés, triables |
+| `Chart`     | Graphiques (Chart.js)      |
+| `Modal`     | Dialogues modaux           |
+| `Toast`     | Notifications              |
+| `Sidebar`   | Navigation latérale        |
+| `Header`    | En-tête avec profil        |
+| `StatCard`  | Cartes de statistiques     |
+| `BotCard`   | Carte bot avec état        |
+| `UserCard`  | Carte utilisateur          |
+| `SearchBar` | Recherche globale          |
+
+## Installation
+
+```bash
+cd manul-core-admin
+npm install
+```
+
+## Développement
+
+```bash
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-## Building
+Accès: `http://localhost:5173`
 
-To create a production version of your app:
+## Build Production
 
-```sh
+```bash
 npm run build
+npm run preview
 ```
 
-You can preview the production build with `npm run preview`.
+## Docker
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+```bash
+docker build -t manulcore-admin .
+docker run -p 3001:3000 manulcore-admin
+```
+
+## Variables d'Environnement
+
+```bash
+PUBLIC_API_URL=https://api.manulcore.io
+PUBLIC_WS_URL=wss://api.manulcore.io/ws
+```
+
+## Authentification
+
+Triple authentification requise:
+
+1. Mot de passe (Argon2)
+2. TOTP (Google Authenticator)
+3. Hardware Key (WebAuthn) - optionnel
+
+## Permissions
+
+| Rôle        | Accès                    |
+| ----------- | ------------------------ |
+| Super Admin | Tout                     |
+| Admin       | Bots, Users, Rentals     |
+| Finance     | Finance, Audit           |
+| Support     | Users (lecture), Rentals |

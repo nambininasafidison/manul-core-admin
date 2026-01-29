@@ -82,7 +82,6 @@ class AdminApiClient {
     return result.data as T;
   }
 
-  // ==================== AUTH ====================
   // Compatible avec les routes backend: /api/admin/auth/*
 
   async login(username: string, password: string) {
@@ -174,7 +173,6 @@ class AdminApiClient {
     return !!this.adminToken;
   }
 
-  // ==================== DASHBOARD & SYSTEM ======================================
   // Compatible avec les routes backend: /api/admin/stats, /api/admin/mother, /api/admin/health
 
   async getDashboard() {
@@ -248,7 +246,6 @@ class AdminApiClient {
     }>('/health');
   }
 
-  // ==================== POPULATION ====================
   // Compatible avec les routes backend: /api/admin/population
 
   async getPopulationStats() {
@@ -260,7 +257,6 @@ class AdminApiClient {
     }>('/population');
   }
 
-  // ==================== BOTS ====================
   // Compatible avec les routes backend: /api/admin/bots (LECTURE SEULE)
   // Note: updateBotStatus et forceBotSpawn ont été SUPPRIMÉS pour sécurité
 
@@ -304,7 +300,6 @@ class AdminApiClient {
   // SUPPRIMÉ: updateBotStatus - Le statut des bots est géré automatiquement
   // SUPPRIMÉ: forceBotSpawn - Seule la Supreme Mother peut spawn des bots
 
-  // ==================== USERS ====================
   // Compatible avec les routes backend: /api/admin/users (LECTURE SEULE)
   // Note: updateUserStatus a été SUPPRIMÉ pour sécurité
 
@@ -365,7 +360,6 @@ class AdminApiClient {
 
   // SUPPRIMÉ: updateUserStatus - Les utilisateurs ne peuvent pas être bannis manuellement
 
-  // ==================== RENTALS ====================
   // Compatible avec les routes backend: /api/admin/rentals (LECTURE SEULE)
   // Note: cancelRental a été SUPPRIMÉ - les contrats sont irrévocables
 
@@ -418,7 +412,6 @@ class AdminApiClient {
 
   // SUPPRIMÉ: cancelRental - Les contrats sont engageants et irrévocables
 
-  // ==================== FINANCE ====================
   // Compatible avec les routes backend: /api/admin/finance/summary, /api/admin/finance/transactions
 
   async getFinancialSummary() {
@@ -459,7 +452,6 @@ class AdminApiClient {
     }>(`/finance/transactions?${searchParams.toString()}`);
   }
 
-  // ==================== AUDIT ====================
   // Compatible avec les routes backend: /api/admin/audit/*
 
   async getAuditLogs(params?: {
@@ -530,7 +522,6 @@ class AdminApiClient {
     }>(`/audit?${searchParams.toString()}`);
   }
 
-  // ==================== CONFIG ====================
   // Compatible avec les routes backend: /api/admin/config (LECTURE SEULE)
   // Note: updateConfig a été SUPPRIMÉ - la configuration est immuable
 
@@ -546,7 +537,6 @@ class AdminApiClient {
 
   // SUPPRIMÉ: updateConfig - La configuration est immuable après déploiement
 
-  // ==================== DATABASE ====================
   // Compatible avec les routes backend: /api/admin/database/stats (LECTURE SEULE)
   // Note: backup et optimize ont été SUPPRIMÉS - automatiques
 
@@ -571,7 +561,6 @@ class AdminApiClient {
   // SUPPRIMÉ: databaseBackup - Les sauvegardes sont automatiques
   // SUPPRIMÉ: databaseOptimize - L'optimisation est automatique
 
-  // ==================== SYSTEM LOGS ====================
   // Compatible avec les routes backend: /api/admin/logs
 
   async getSystemLogs(params?: { page?: number; limit?: number }) {
@@ -585,7 +574,6 @@ class AdminApiClient {
     }>(`/logs?${searchParams.toString()}`);
   }
 
-  // ==================== NAMING ====================
   // Compatible avec les routes backend: /api/admin/naming/*
 
   async getNamingStats() {
