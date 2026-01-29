@@ -36,18 +36,20 @@ src/
 
 ## Pages
 
-| Route         | Description                          |
-| ------------- | ------------------------------------ |
-| `/dashboard`  | Vue d'ensemble, métriques temps réel |
-| `/bots`       | Liste, création, modification bots   |
-| `/bots/[id]`  | Détails bot, stats, contrôles        |
-| `/users`      | Liste utilisateurs, recherche        |
-| `/users/[id]` | Profil utilisateur, historique       |
-| `/rentals`    | Locations actives, historique        |
-| `/finance`    | Revenus, transactions, distribution  |
-| `/security`   | Alertes, menaces, blocages IP        |
-| `/audit`      | Logs système, actions admin          |
-| `/settings`   | Configuration système                |
+> ⚠️ **Interface de monitoring uniquement** - Aucune action de modification n'est possible via l'UI.
+
+| Route        | Description                          |
+| ------------ | ------------------------------------ |
+| `/login`     | Authentification admin               |
+| `/dashboard` | Vue d'ensemble, métriques temps réel |
+| `/bots`      | Liste des bots (lecture seule)       |
+| `/users`     | Liste utilisateurs (lecture seule)   |
+| `/rentals`   | Locations actives                    |
+| `/finance`   | Revenus, transactions                |
+| `/security`  | Alertes sécurité                     |
+| `/audit`     | Logs système                         |
+| `/database`  | Stats base de données                |
+| `/settings`  | Configuration (lecture seule)        |
 
 ## Composants
 

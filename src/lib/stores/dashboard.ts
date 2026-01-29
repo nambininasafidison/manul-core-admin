@@ -4,21 +4,10 @@
  */
 
 import { adminApi } from '$lib/api/client';
+import type { SystemStats } from '$lib/types';
 import { derived, writable } from 'svelte/store';
 
 // Types
-export interface SystemStats {
-  totalBots: number;
-  activeBots: number;
-  totalUsers: number;
-  activeRentals: number;
-  totalCapital: number;
-  totalProfit: number;
-  uptimeSeconds: number;
-  cpuUsage: number;
-  memoryUsage: number;
-}
-
 export interface MotherSupremeStatus {
   capital: number;
   childrenCount: number;
