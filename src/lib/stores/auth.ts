@@ -1,3 +1,4 @@
+import { adminApi } from '$lib/api/client';
 import type { AdminUser, AuthState } from '$lib/types';
 import { derived, writable } from 'svelte/store';
 
@@ -39,18 +40,46 @@ function createAuthStore() {
         isAuthenticated: true,
         sessionExpiry,
       }),
-    logout: () =>
+    logout: () => {
+      adminApi.logout().catch(() => {});
       set({
         user: null,
         authState: { step: 'credentials' },
         isAuthenticated: false,
         sessionExpiry: null,
-      }),
+      });
+    },
     updateSessionExpiry: (expiry: number) =>
       update((state) => ({
         ...state,
         sessionExpiry: expiry,
       })),
+    // Initialize from stored token
+    async initFromToken() {
+      if (adminApi.isAuthenticated()) {
+        try {
+          const session = await adminApi.getSession();
+          set({
+            user: {
+              id: session.user_id,
+              username: session.username,
+              email: `${session.username}@manulcore.io`,
+              role: session.role === 'creator' ? 'creator' : 'super_admin',
+              totpEnabled: session.two_factor_verified,
+              hardwareKeyEnabled: session.two_factor_verified,
+              createdAt: new Date().toISOString(),
+            },
+            authState: { step: 'complete' },
+            isAuthenticated: true,
+            sessionExpiry: new Date(session.expires_at).getTime(),
+          });
+          return true;
+        } catch {
+          adminApi.clearTokens();
+        }
+      }
+      return false;
+    },
   };
 }
 

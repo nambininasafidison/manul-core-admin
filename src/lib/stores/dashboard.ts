@@ -1,5 +1,6 @@
 /**
  * Dashboard Store - Gère les données du dashboard admin
+ * Intégré avec le backend Rust Manul Core
  */
 
 import { adminApi } from '$lib/api/client';
@@ -24,6 +25,7 @@ export interface MotherSupremeStatus {
   generationMax: number;
   compoundRate: number;
   lastActivity: string;
+  canSpawn: boolean;
 }
 
 export interface RecentActivity {
@@ -83,11 +85,21 @@ function createDashboardStore() {
         const stats = await adminApi.getSystemStats();
         update((s) => ({
           ...s,
-          systemStats: stats,
+          systemStats: {
+            totalBots: stats.total_bots,
+            activeBots: stats.active_bots,
+            totalUsers: 0, // Not provided by backend, will be fetched separately if needed
+            activeRentals: stats.active_contracts,
+            totalCapital: stats.total_capital,
+            totalProfit: stats.total_distributed,
+            uptimeSeconds: stats.uptime_seconds,
+            cpuUsage: 0, // System metrics not exposed for security
+            memoryUsage: 0,
+          },
           loading: false,
         }));
       } catch (error) {
-        // Utiliser des données mock en cas d'erreur
+        // Fallback to mock data if backend unavailable
         update((s) => ({
           ...s,
           systemStats: {
@@ -102,17 +114,27 @@ function createDashboardStore() {
             memoryUsage: 52,
           },
           loading: false,
-          error: null,
+          error: error instanceof Error ? error.message : 'Failed to load stats',
         }));
       }
     },
 
     async loadMotherSupreme() {
       try {
-        const mother = await adminApi.getMotherSupremeStatus();
-        update((s) => ({ ...s, motherSupreme: mother }));
+        const mother = await adminApi.getMotherStatus();
+        update((s) => ({
+          ...s,
+          motherSupreme: {
+            capital: mother.summary.capital,
+            childrenCount: mother.summary.total_children,
+            generationMax: mother.summary.max_generation,
+            compoundRate: mother.config.child_capital_share,
+            lastActivity: new Date().toISOString(),
+            canSpawn: mother.can_spawn,
+          },
+        }));
       } catch (error) {
-        // Mock data
+        // Fallback to mock data
         update((s) => ({
           ...s,
           motherSupreme: {
@@ -121,13 +143,59 @@ function createDashboardStore() {
             generationMax: 8,
             compoundRate: 0.4,
             lastActivity: new Date().toISOString(),
+            canSpawn: true,
           },
         }));
       }
     },
 
+    async loadRecentActivity() {
+      try {
+        const auditLogs = await adminApi.getAuditLogs({ limit: 10 });
+        const activities: RecentActivity[] = auditLogs.items.map((log) => ({
+          type: log.action.includes('rental')
+            ? 'rental'
+            : log.action.includes('spawn')
+              ? 'spawn'
+              : log.action.includes('profit')
+                ? 'profit'
+                : log.action.includes('withdrawal')
+                  ? 'withdrawal'
+                  : 'deposit',
+          user: log.actorType === 'user' ? log.actorId : undefined,
+          bot: log.targetType === 'bot' ? log.targetId : undefined,
+          amount: (log.details as Record<string, number>)?.amount,
+          time: new Date(log.timestamp),
+        }));
+        update((s) => ({ ...s, recentActivity: activities }));
+      } catch {
+        // Keep existing mock data
+      }
+    },
+
+    async loadAlerts() {
+      try {
+        const securityEvents = await adminApi.getSecurityEvents({ limit: 5 });
+        const alerts: SystemAlert[] = securityEvents.items
+          .filter((e) => !e.resolved)
+          .map((e) => ({
+            level: e.severity,
+            message: e.event,
+            time: new Date(e.timestamp),
+          }));
+        update((s) => ({ ...s, alerts }));
+      } catch {
+        // Keep existing mock data
+      }
+    },
+
     async loadAll() {
-      await Promise.all([this.loadStats(), this.loadMotherSupreme()]);
+      await Promise.all([
+        this.loadStats(),
+        this.loadMotherSupreme(),
+        this.loadRecentActivity(),
+        this.loadAlerts(),
+      ]);
     },
 
     setRecentActivity(activities: RecentActivity[]) {

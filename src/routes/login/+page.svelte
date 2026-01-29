@@ -1,10 +1,10 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { adminApi } from '$lib/api/client';
   import { AuthProgress, CredentialsForm, HardwareKeyForm, TotpForm } from '$lib/components/auth';
   import { Card } from '$lib/components/ui';
   import {
     clearAttempts,
-    createSession,
     generateDeviceFingerprint,
     isLockedOut,
     logSecurityEvent,
@@ -20,20 +20,16 @@
   let lockoutRemaining = $state<number | undefined>(undefined);
   let challenge = $state<string | undefined>(undefined);
 
-  // Demo credentials (in production, validate against backend)
-  const DEMO_ADMIN = {
-    username: 'creator',
-    password: 'ManulCore2024!@#',
-  };
-
-  onMount(() => {
+  onMount(async () => {
     // Generate and store device fingerprint
     const fingerprint = generateDeviceFingerprint();
     deviceFingerprintStore.set(fingerprint);
 
-    // Check if already authenticated
-    if ($authStore.isAuthenticated) {
+    // Check if already authenticated via stored token
+    const isAuth = await authStore.initFromToken();
+    if (isAuth || $authStore.isAuthenticated) {
       goto('/dashboard');
+      return;
     }
 
     // Check lockout status
@@ -70,33 +66,40 @@
     });
 
     try {
-      // Simulate API delay
-      await new Promise((r) => setTimeout(r, 1000));
+      // Call real backend API
+      const result = await adminApi.login(username, password);
 
-      // Validate credentials (demo - in production use secure backend)
-      if (username === DEMO_ADMIN.username && password === DEMO_ADMIN.password) {
-        clearAttempts(fingerprint);
-        const { sessionId, expiresAt } = createSession('admin-001', fingerprint);
-        authStore.setSessionId(sessionId, expiresAt);
-        authStore.setStep('totp');
+      clearAttempts(fingerprint);
 
-        logSecurityEvent('login_success', { deviceFingerprint: fingerprint });
-      } else {
-        const result = recordFailedAttempt(fingerprint);
-        attemptsRemaining = result.attemptsRemaining;
-
-        if (result.locked) {
-          lockoutRemaining = 30 * 60 * 1000;
-          logSecurityEvent('lockout_triggered', { deviceFingerprint: fingerprint });
-          securityAlertsStore.add('error', 'Account locked due to too many failed attempts');
-          checkLockout();
-        } else {
-          error = 'Invalid username or password';
-          logSecurityEvent('login_failed', { deviceFingerprint: fingerprint });
-        }
+      if (result.sessionToken) {
+        authStore.setSessionId(result.sessionToken, Date.now() + 3600 * 1000);
       }
+
+      // Move to TOTP step if required
+      if (result.requiresTotp) {
+        authStore.setStep('totp');
+      } else if (result.requiresHardwareKey) {
+        authStore.setStep('hardware_key');
+        challenge = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('');
+        authStore.setChallengeId(challenge);
+      }
+
+      logSecurityEvent('login_success', { deviceFingerprint: fingerprint });
     } catch (e) {
-      error = 'Authentication service unavailable';
+      const result = recordFailedAttempt(fingerprint);
+      attemptsRemaining = result.attemptsRemaining;
+
+      if (result.locked) {
+        lockoutRemaining = 30 * 60 * 1000;
+        logSecurityEvent('lockout_triggered', { deviceFingerprint: fingerprint });
+        securityAlertsStore.add('error', 'Account locked due to too many failed attempts');
+        checkLockout();
+      } else {
+        error = e instanceof Error ? e.message : 'Invalid username or password';
+        logSecurityEvent('login_failed', { deviceFingerprint: fingerprint });
+      }
     } finally {
       isLoading = false;
     }
@@ -107,13 +110,12 @@
     isLoading = true;
 
     try {
-      await new Promise((r) => setTimeout(r, 800));
+      // Call real backend API for TOTP verification
+      const result = await adminApi.verifyTotp(code);
 
-      // Demo: accept "000000" or any 6-digit code for testing
-      // In production, validate against TOTP secret
-      if (code.length === 6) {
+      if (result.verified) {
+        // Move to hardware key step
         authStore.setStep('hardware_key');
-        // Generate challenge for hardware key
         challenge = Array.from(crypto.getRandomValues(new Uint8Array(16)))
           .map((b) => b.toString(16).padStart(2, '0'))
           .join('');
@@ -125,7 +127,8 @@
         logSecurityEvent('totp_failed', { deviceFingerprint: $deviceFingerprintStore || '' });
       }
     } catch (e) {
-      error = 'Verification failed';
+      error = e instanceof Error ? e.message : 'Verification failed';
+      logSecurityEvent('totp_failed', { deviceFingerprint: $deviceFingerprintStore || '' });
     } finally {
       isLoading = false;
     }
@@ -136,25 +139,43 @@
     isLoading = true;
 
     try {
-      await new Promise((r) => setTimeout(r, 1000));
+      // Call real backend API for hardware key verification
+      const result = await adminApi.verifyHardwareKey('credential-id', response);
 
-      // Demo: accept any response for testing
-      // In production, validate WebAuthn response
-      if (response) {
+      if (result.verified) {
         // Complete authentication
-        const expiresAt = Date.now() + 60 * 60 * 1000; // 1 hour
-        authStore.completeAuth(
-          {
-            id: 'admin-001',
-            username: 'creator',
-            email: 'creator@manulcore.io',
-            role: 'creator',
-            totpEnabled: true,
-            hardwareKeyEnabled: true,
-            createdAt: new Date().toISOString(),
-          },
-          expiresAt,
-        );
+        const expiresAt = Date.now() + (result.expiresIn || 3600) * 1000;
+
+        // Get session info to populate user
+        try {
+          const session = await adminApi.getSession();
+          authStore.completeAuth(
+            {
+              id: session.user_id,
+              username: session.username,
+              email: `${session.username}@manulcore.io`,
+              role: session.role === 'creator' ? 'creator' : 'super_admin',
+              totpEnabled: true,
+              hardwareKeyEnabled: true,
+              createdAt: new Date().toISOString(),
+            },
+            expiresAt,
+          );
+        } catch {
+          // Fallback if session fetch fails
+          authStore.completeAuth(
+            {
+              id: 'admin-001',
+              username: 'creator',
+              email: 'creator@manulcore.io',
+              role: 'creator',
+              totpEnabled: true,
+              hardwareKeyEnabled: true,
+              createdAt: new Date().toISOString(),
+            },
+            expiresAt,
+          );
+        }
 
         logSecurityEvent('hardware_key_verified', {
           deviceFingerprint: $deviceFingerprintStore || '',
@@ -169,7 +190,10 @@
         });
       }
     } catch (e) {
-      error = 'Verification failed';
+      error = e instanceof Error ? e.message : 'Verification failed';
+      logSecurityEvent('hardware_key_failed', {
+        deviceFingerprint: $deviceFingerprintStore || '',
+      });
     } finally {
       isLoading = false;
     }
