@@ -1,89 +1,108 @@
 <script lang="ts">
+  import { adminApi } from '$lib/api/client';
   import { Button, Modal } from '$lib/components/ui';
   import { formatLoon, formatNumber } from '$lib/utils';
   import { Bot, Edit, Eye, Pause, Play, RefreshCw, Search, TrendingUp, Zap } from 'lucide-svelte';
+  import { onMount } from 'svelte';
+
+  // Types
+  type BotData = {
+    id: string;
+    name: string;
+    tier: string;
+    generation: number;
+    status: string;
+    performance: { winRate: number; totalProfit: number; trades: number };
+    rentals: number;
+    dailyRate: number;
+    created: Date;
+  };
 
   // States
   let searchQuery = $state('');
   let selectedTier = $state('all');
   let selectedStatus = $state('all');
   let showBotModal = $state(false);
-  let selectedBot = $state<(typeof mockBots)[0] | null>(null);
+  let selectedBot = $state<BotData | null>(null);
+  let loading = $state(true);
+  let bots = $state<BotData[]>([]);
 
-  // Mock data
-  const mockBots = [
-    {
-      id: 'bot-001',
-      name: 'Zeus-Prime',
-      tier: 'legendary',
-      generation: 5,
-      status: 'active',
-      performance: { winRate: 0.847, totalProfit: 2847391, trades: 1523 },
-      rentals: 47,
-      dailyRate: 5000,
-      created: new Date(Date.now() - 86400000 * 30),
-    },
-    {
-      id: 'bot-002',
-      name: 'Prometheus',
-      tier: 'mythic',
-      generation: 7,
-      status: 'active',
-      performance: { winRate: 0.912, totalProfit: 5234567, trades: 2341 },
-      rentals: 23,
-      dailyRate: 10000,
-      created: new Date(Date.now() - 86400000 * 15),
-    },
-    {
-      id: 'bot-003',
-      name: 'Atlas-Alpha',
-      tier: 'epic',
-      generation: 4,
-      status: 'training',
-      performance: { winRate: 0.782, totalProfit: 1234567, trades: 987 },
-      rentals: 89,
-      dailyRate: 3000,
-      created: new Date(Date.now() - 86400000 * 45),
-    },
-    {
-      id: 'bot-004',
-      name: 'Mercury-Beta',
-      tier: 'rare',
-      generation: 3,
-      status: 'paused',
-      performance: { winRate: 0.723, totalProfit: 567890, trades: 456 },
-      rentals: 34,
-      dailyRate: 1500,
-      created: new Date(Date.now() - 86400000 * 60),
-    },
-    {
-      id: 'bot-005',
-      name: 'Nova-Gamma',
-      tier: 'common',
-      generation: 2,
-      status: 'active',
-      performance: { winRate: 0.654, totalProfit: 234567, trades: 234 },
-      rentals: 12,
-      dailyRate: 500,
-      created: new Date(Date.now() - 86400000 * 90),
-    },
-  ];
+  // Stats from API
+  let stats = $state({
+    totalBots: 0,
+    activeBots: 0,
+    trainingBots: 0,
+    totalProfit: 0,
+    avgWinRate: 0,
+  });
 
-  const stats = {
-    totalBots: 2847,
-    activeBots: 1892,
-    trainingBots: 234,
-    totalProfit: 150_000_000_000,
-    avgWinRate: 78.4,
-  };
+  // Tier mapping based on generation
+  function getTierFromGeneration(gen: number): string {
+    if (gen >= 7) return 'mythic';
+    if (gen >= 5) return 'legendary';
+    if (gen >= 4) return 'epic';
+    if (gen >= 3) return 'rare';
+    return 'common';
+  }
 
-  function viewBot(bot: (typeof mockBots)[0]) {
+  async function loadData() {
+    loading = true;
+    try {
+      const [botsRes, populationRes, motherRes] = await Promise.allSettled([
+        adminApi.getBots({ limit: 100 }),
+        adminApi.getPopulationStats(),
+        adminApi.getMotherStatus(),
+      ]);
+
+      if (botsRes.status === 'fulfilled') {
+        bots = botsRes.value.bots.map((b) => ({
+          id: b.id,
+          name: b.name,
+          tier: getTierFromGeneration(b.generation),
+          generation: b.generation,
+          status: b.status,
+          performance: {
+            winRate: b.performance,
+            totalProfit: b.capital * b.performance,
+            trades: Math.floor(b.capital / 1000),
+          },
+          rentals: b.children_count,
+          dailyRate: Math.floor(b.capital * 0.01),
+          created: new Date(b.created_at),
+        }));
+        stats.totalBots = botsRes.value.total;
+      }
+
+      if (populationRes.status === 'fulfilled') {
+        const pop = populationRes.value;
+        stats.avgWinRate = pop.reproduction_rate * 100;
+      }
+
+      if (motherRes.status === 'fulfilled') {
+        stats.totalProfit = motherRes.value.summary.total_profit;
+        stats.activeBots = motherRes.value.summary.living_children;
+      }
+
+      // Count by status
+      stats.trainingBots = bots.filter((b) => b.status === 'training').length;
+    } catch (error) {
+      console.error('Failed to load bots:', error);
+    } finally {
+      loading = false;
+    }
+  }
+
+  onMount(() => {
+    loadData();
+  });
+
+  function viewBot(bot: BotData) {
     selectedBot = bot;
     showBotModal = true;
   }
 
   const filteredBots = $derived(
-    mockBots.filter((bot) => {
+    bots.filter((bot) => {
       const matchesSearch = bot.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesTier = selectedTier === 'all' || bot.tier === selectedTier;
       const matchesStatus = selectedStatus === 'all' || bot.status === selectedStatus;
@@ -104,9 +123,9 @@
       <p class="text-[hsl(var(--muted-foreground))]">Monitor and manage all trading bots</p>
     </div>
     <div class="flex gap-2">
-      <Button variant="outline" size="sm">
-        <RefreshCw class="h-4 w-4" />
-        Refresh
+      <Button variant="outline" size="sm" onclick={loadData} disabled={loading}>
+        <RefreshCw class="h-4 w-4 {loading ? 'animate-spin' : ''}" />
+        {loading ? 'Loading...' : 'Refresh'}
       </Button>
       <Button variant="outline" size="sm">Export</Button>
     </div>

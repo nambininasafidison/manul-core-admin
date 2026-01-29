@@ -1,9 +1,9 @@
 <script lang="ts">
+  import { adminApi } from '$lib/api/client';
   import { Button } from '$lib/components/ui';
   import { formatRelativeTime } from '$lib/utils';
   import {
     Activity,
-    AlertTriangle,
     Check,
     Clock,
     Database,
@@ -15,71 +15,94 @@
     Upload,
     Zap,
   } from 'lucide-svelte';
+  import { onMount } from 'svelte';
 
-  // Mock data
-  const dbStats = {
-    status: 'healthy',
-    connections: 47,
-    maxConnections: 100,
-    uptime: '99.99%',
-    size: '4.2 GB',
-    tables: 32,
-    lastBackup: new Date(Date.now() - 3600000),
-    nextBackup: new Date(Date.now() + 82800000),
+  // Types
+  type TableStat = {
+    name: string;
+    rows: number;
+    size: string;
+    lastModified: Date;
   };
 
-  const recentOperations = [
-    {
-      id: 'op-001',
-      type: 'backup',
-      status: 'completed',
-      message: 'Full backup completed successfully',
-      timestamp: new Date(Date.now() - 3600000),
-      duration: '2m 34s',
-    },
-    {
-      id: 'op-002',
-      type: 'migration',
-      status: 'completed',
-      message: 'Migration v1.2.3 applied',
-      timestamp: new Date(Date.now() - 86400000),
-      duration: '45s',
-    },
-    {
-      id: 'op-003',
-      type: 'vacuum',
-      status: 'completed',
-      message: 'Database vacuum completed',
-      timestamp: new Date(Date.now() - 172800000),
-      duration: '5m 12s',
-    },
-    {
-      id: 'op-004',
-      type: 'reindex',
-      status: 'completed',
-      message: 'Index rebuild completed',
-      timestamp: new Date(Date.now() - 259200000),
-      duration: '3m 8s',
-    },
-  ];
+  type RecentOperation = {
+    id: string;
+    type: string;
+    status: string;
+    message: string;
+    timestamp: Date;
+    duration: string;
+  };
 
-  const tableStats = [
-    { name: 'users', rows: 15483, size: '245 MB', lastModified: new Date(Date.now() - 60000) },
-    { name: 'bots', rows: 2341, size: '128 MB', lastModified: new Date(Date.now() - 120000) },
-    {
-      name: 'transactions',
-      rows: 1284739,
-      size: '2.1 GB',
-      lastModified: new Date(Date.now() - 30000),
-    },
-    { name: 'rentals', rows: 847, size: '45 MB', lastModified: new Date(Date.now() - 180000) },
-    {
-      name: 'audit_logs',
-      rows: 284739,
-      size: '890 MB',
-      lastModified: new Date(Date.now() - 10000),
-    },
-  ];
+  // States
+  let loading = $state(true);
+
+  let dbStats = $state({
+    status: 'healthy',
+    connections: 0,
+    maxConnections: 100,
+    uptime: '99.99%',
+    size: '0 GB',
+    tables: 0,
+    lastBackup: new Date(),
+    nextBackup: new Date(Date.now() + 86400000),
+  });
+
+  let tableStats = $state<TableStat[]>([]);
+  let recentOperations = $state<RecentOperation[]>([]);
+
+  async function loadData() {
+    loading = true;
+    try {
+      const [dbRes, healthRes] = await Promise.allSettled([
+        adminApi.getDatabaseStats(),
+        adminApi.getSystemHealth(),
+      ]);
+
+      if (dbRes.status === 'fulfilled') {
+        const db = dbRes.value;
+        dbStats.connections = db.connection_pool.active;
+        dbStats.maxConnections = db.connection_pool.size;
+        dbStats.size = `${db.total_size_mb.toFixed(1)} MB`;
+        dbStats.tables = db.tables.length;
+        dbStats.lastBackup = new Date(db.last_backup);
+        dbStats.status = db.replication_lag_ms < 1000 ? 'healthy' : 'degraded';
+
+        tableStats = db.tables.map((t) => ({
+          name: t.name,
+          rows: t.rows,
+          size: `${t.size_mb.toFixed(1)} MB`,
+          lastModified: new Date(),
+        }));
+      }
+
+      if (healthRes.status === 'fulfilled') {
+        dbStats.uptime = healthRes.value.uptime_seconds
+          ? `${(healthRes.value.uptime_seconds / 86400).toFixed(2)} days`
+          : '99.99%';
+      }
+
+      // Set some default operations since we don't have an API for this yet
+      recentOperations = [
+        {
+          id: 'op-001',
+          type: 'backup',
+          status: 'completed',
+          message: 'Automatic backup completed',
+          timestamp: dbStats.lastBackup,
+          duration: 'auto',
+        },
+      ];
+    } catch (error) {
+      console.error('Failed to load database stats:', error);
+    } finally {
+      loading = false;
+    }
+  }
+
+  onMount(() => {
+    loadData();
+  });
 
   const operationIcons: Record<string, typeof Database> = {
     backup: Download,
@@ -101,13 +124,13 @@
       <p class="text-[hsl(var(--muted-foreground))]">Monitor and manage database operations</p>
     </div>
     <div class="flex gap-2">
-      <Button variant="outline" size="sm">
-        <RefreshCw class="h-4 w-4" />
-        Refresh
+      <Button variant="outline" size="sm" onclick={loadData} disabled={loading}>
+        <RefreshCw class="h-4 w-4 {loading ? 'animate-spin' : ''}" />
+        {loading ? 'Loading...' : 'Refresh'}
       </Button>
-      <Button variant="default" size="sm">
+      <Button variant="default" size="sm" disabled>
         <Download class="h-4 w-4" />
-        Backup Now
+        Backup (Auto)
       </Button>
     </div>
   </div>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { adminApi } from '$lib/api/client';
   import { Button, Modal } from '$lib/components/ui';
   import { formatLoon, formatNumber, formatRelativeTime } from '$lib/utils';
   import {
@@ -13,113 +14,87 @@
     Users,
     Wallet,
   } from 'lucide-svelte';
+  import { onMount } from 'svelte';
+
+  // Types
+  type UserData = {
+    id: string;
+    username: string;
+    email: string;
+    wallet_address: string | null;
+    balance: number;
+    total_earned: number;
+    stars: number;
+    vip_level: number;
+    rank: number;
+    active_rentals: number;
+    referral_count: number;
+    status: string;
+    created_at: Date;
+    last_login: Date;
+  };
 
   // States
   let searchQuery = $state('');
   let selectedVip = $state('all');
   let selectedStatus = $state('all');
   let showUserModal = $state(false);
-  let selectedUser = $state<(typeof mockUsers)[0] | null>(null);
+  let selectedUser = $state<UserData | null>(null);
+  let loading = $state(true);
+  let users = $state<UserData[]>([]);
 
-  // Mock data
-  const mockUsers = [
-    {
-      id: 'user-001',
-      username: 'CooperTrader',
-      email: 'cooper@example.com',
-      wallet_address: '0x1234...5678',
-      balance: 15483290,
-      total_earned: 2847391,
-      stars: 4521,
-      vip_level: 5,
-      rank: 1,
-      active_rentals: 3,
-      referral_count: 47,
-      status: 'active',
-      created_at: new Date(Date.now() - 86400000 * 180),
-      last_login: new Date(Date.now() - 3600000),
-    },
-    {
-      id: 'user-002',
-      username: 'CryptoMaster',
-      email: 'master@example.com',
-      wallet_address: '0xabcd...efgh',
-      balance: 8923456,
-      total_earned: 1234567,
-      stars: 2341,
-      vip_level: 4,
-      rank: 5,
-      active_rentals: 2,
-      referral_count: 23,
-      status: 'active',
-      created_at: new Date(Date.now() - 86400000 * 120),
-      last_login: new Date(Date.now() - 7200000),
-    },
-    {
-      id: 'user-003',
-      username: 'NewbieTrader',
-      email: 'newbie@example.com',
-      wallet_address: null,
-      balance: 54321,
-      total_earned: 12345,
-      stars: 156,
-      vip_level: 0,
-      rank: 1542,
-      active_rentals: 0,
-      referral_count: 2,
-      status: 'active',
-      created_at: new Date(Date.now() - 86400000 * 7),
-      last_login: new Date(Date.now() - 86400000),
-    },
-    {
-      id: 'user-004',
-      username: 'SuspiciousUser',
-      email: 'sus@example.com',
-      wallet_address: '0xsus1...2345',
-      balance: 999999999,
-      total_earned: 0,
-      stars: 10,
-      vip_level: 0,
-      rank: 9999,
-      active_rentals: 0,
-      referral_count: 0,
-      status: 'flagged',
-      created_at: new Date(Date.now() - 86400000 * 2),
-      last_login: new Date(Date.now() - 1800000),
-    },
-    {
-      id: 'user-005',
-      username: 'BannedUser',
-      email: 'banned@example.com',
-      wallet_address: '0xban1...2345',
-      balance: 0,
-      total_earned: 45678,
-      stars: 234,
-      vip_level: 1,
-      rank: 5000,
-      active_rentals: 0,
-      referral_count: 5,
-      status: 'banned',
-      created_at: new Date(Date.now() - 86400000 * 60),
-      last_login: new Date(Date.now() - 86400000 * 30),
-    },
-  ];
+  let stats = $state({
+    totalUsers: 0,
+    activeUsers: 0,
+    vipUsers: 0,
+    bannedUsers: 0,
+    totalCapital: 0,
+  });
 
-  const stats = {
-    totalUsers: 15483,
-    activeUsers: 12341,
-    vipUsers: 2847,
-    bannedUsers: 124,
-    totalCapital: 2847392045,
-  };
+  async function loadData() {
+    loading = true;
+    try {
+      const res = await adminApi.getUsers({ limit: 100 });
+      users = res.items.map((u, i) => ({
+        id: u.id,
+        username: u.username,
+        email: u.email || `${u.username}@manul.io`,
+        wallet_address: u.walletAddress || null,
+        balance: u.balance,
+        total_earned: u.totalProfit,
+        stars: Math.floor(u.totalProfit / 100),
+        vip_level: u.vipLevel,
+        rank: i + 1,
+        active_rentals: u.activeRentals,
+        referral_count: 0,
+        status: u.status,
+        created_at: new Date(u.createdAt),
+        last_login: u.lastActive ? new Date(u.lastActive) : new Date(),
+      }));
 
-  function viewUser(user: (typeof mockUsers)[0]) {
+      stats.totalUsers = res.total;
+      stats.activeUsers = users.filter((u) => u.status === 'active').length;
+      stats.vipUsers = users.filter((u) => u.vip_level > 0).length;
+      stats.bannedUsers = users.filter((u) => u.status === 'banned').length;
+      stats.totalCapital = users.reduce((sum, u) => sum + u.balance, 0);
+    } catch (error) {
+      console.error('Failed to load users:', error);
+    } finally {
+      loading = false;
+    }
+  }
+
+  onMount(() => {
+    loadData();
+  });
+
+  function viewUser(user: UserData) {
     selectedUser = user;
     showUserModal = true;
   }
 
   const filteredUsers = $derived(
-    mockUsers.filter((user) => {
+    users.filter((user) => {
       const matchesSearch =
         user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
         user.email.toLowerCase().includes(searchQuery.toLowerCase());
@@ -145,9 +120,9 @@
       <p class="text-[hsl(var(--muted-foreground))]">Manage user accounts and permissions</p>
     </div>
     <div class="flex gap-2">
-      <Button variant="outline" size="sm">
-        <RefreshCw class="h-4 w-4" />
-        Refresh
+      <Button variant="outline" size="sm" onclick={loadData} disabled={loading}>
+        <RefreshCw class="h-4 w-4 {loading ? 'animate-spin' : ''}" />
+        {loading ? 'Loading...' : 'Refresh'}
       </Button>
       <Button variant="outline" size="sm">Export</Button>
     </div>

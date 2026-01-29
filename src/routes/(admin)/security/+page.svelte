@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { adminApi } from '$lib/api/client';
   import { Button } from '$lib/components/ui';
   import { formatRelativeTime } from '$lib/utils';
   import {
@@ -17,70 +18,79 @@
     UserX,
     X,
   } from 'lucide-svelte';
+  import { onMount } from 'svelte';
+
+  // Types
+  type SecurityAlert = {
+    id: string;
+    type: string;
+    severity: string;
+    message: string;
+    source: string;
+    timestamp: Date;
+    status: string;
+  };
+
+  type BlockedIP = {
+    ip: string;
+    reason: string;
+    blocked_at: Date;
+    attempts: number;
+  };
 
   // States
   let searchQuery = $state('');
+  let loading = $state(true);
 
-  // Mock data
-  const securityStats = {
+  let securityStats = $state({
     threatLevel: 'low',
-    blockedAttempts: 847,
-    activeAlerts: 3,
-    lastIncident: new Date(Date.now() - 7200000),
+    blockedAttempts: 0,
+    activeAlerts: 0,
+    lastIncident: new Date(),
     firewallStatus: 'active',
-    lastBackup: new Date(Date.now() - 3600000),
-  };
+    lastBackup: new Date(),
+  });
 
-  const securityAlerts = [
-    {
-      id: 'alert-001',
-      type: 'brute_force',
-      severity: 'high',
-      message: 'Multiple failed login attempts detected',
-      source: '192.168.1.105',
-      timestamp: new Date(Date.now() - 300000),
-      status: 'active',
-    },
-    {
-      id: 'alert-002',
-      type: 'suspicious_activity',
-      severity: 'medium',
-      message: 'Unusual API request pattern',
-      source: 'api-client-892',
-      timestamp: new Date(Date.now() - 1800000),
-      status: 'investigating',
-    },
-    {
-      id: 'alert-003',
-      type: 'rate_limit',
-      severity: 'low',
-      message: 'Rate limit exceeded',
-      source: '10.0.0.45',
-      timestamp: new Date(Date.now() - 3600000),
-      status: 'resolved',
-    },
-  ];
+  let securityAlerts = $state<SecurityAlert[]>([]);
+  let blockedIPs = $state<BlockedIP[]>([]);
 
-  const blockedIPs = [
-    {
-      ip: '1.2.3.4',
-      reason: 'Brute force attack',
-      blocked_at: new Date(Date.now() - 86400000),
-      attempts: 127,
-    },
-    {
-      ip: '5.6.7.8',
-      reason: 'SQL injection attempt',
-      blocked_at: new Date(Date.now() - 172800000),
-      attempts: 45,
-    },
-    {
-      ip: '9.10.11.12',
-      reason: 'DDoS participation',
-      blocked_at: new Date(Date.now() - 259200000),
-      attempts: 892,
-    },
-  ];
+  async function loadData() {
+    loading = true;
+    try {
+      const securityRes = await adminApi.getSecurityEvents({ limit: 50 });
+
+      if (securityRes) {
+        securityAlerts = securityRes.items.map((s) => ({
+          id: s.id,
+          type: s.event.includes('login') ? 'brute_force' : 'suspicious_activity',
+          severity:
+            s.severity === 'critical' ? 'high' : s.severity === 'warning' ? 'medium' : 'low',
+          message: s.event,
+          source: s.source,
+          timestamp: new Date(s.timestamp),
+          status: s.resolved ? 'resolved' : 'active',
+        }));
+
+        securityStats.activeAlerts = securityAlerts.filter((a) => a.status === 'active').length;
+        securityStats.blockedAttempts = securityAlerts.length;
+
+        if (securityAlerts.length > 0) {
+          securityStats.lastIncident = securityAlerts[0].timestamp;
+          const criticalCount = securityAlerts.filter((a) => a.severity === 'high').length;
+          securityStats.threatLevel =
+            criticalCount > 5 ? 'high' : criticalCount > 0 ? 'medium' : 'low';
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load security data:', error);
+    } finally {
+      loading = false;
+    }
+  }
+
+  onMount(() => {
+    loadData();
+  });
 
   const severityStyles: Record<string, { bg: string; text: string }> = {
     high: { bg: 'bg-[hsl(var(--destructive))]/20', text: 'text-[hsl(var(--destructive))]' },
@@ -116,9 +126,9 @@
       </p>
     </div>
     <div class="flex gap-2">
-      <Button variant="outline" size="sm">
-        <RefreshCw class="h-4 w-4" />
-        Scan Now
+      <Button variant="outline" size="sm" onclick={loadData} disabled={loading}>
+        <RefreshCw class="h-4 w-4 {loading ? 'animate-spin' : ''}" />
+        {loading ? 'Scanning...' : 'Scan Now'}
       </Button>
       <Button variant="default" size="sm">
         <Lock class="h-4 w-4" />

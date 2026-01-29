@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { adminApi } from '$lib/api/client';
   import { Button } from '$lib/components/ui';
   import {
     Bell,
@@ -13,8 +14,10 @@
     Shield,
     Webhook,
   } from 'lucide-svelte';
+  import { onMount } from 'svelte';
 
   // States
+  let loading = $state(true);
   let activeTab = $state('general');
   let siteName = $state('Manul Core');
   let siteUrl = $state('https://manul.io');
@@ -28,6 +31,31 @@
   let twoFactorEnabled = $state(true);
   let autoBackup = $state(true);
   let maintenanceMode = $state(false);
+
+  // System config from backend
+  let systemConfig = $state({
+    max_population: 0,
+    spawn_threshold: 0,
+    child_capital_share: 0,
+    mutation_rate: 0,
+    spawn_cooldown_secs: 0,
+  });
+
+  async function loadData() {
+    loading = true;
+    try {
+      const configRes = await adminApi.getConfig();
+      systemConfig = configRes;
+    } catch (error) {
+      console.error('Failed to load config:', error);
+    } finally {
+      loading = false;
+    }
+  }
+
+  onMount(() => {
+    loadData();
+  });
 
   const tabs = [
     { id: 'general', label: 'General', icon: Settings },
@@ -49,9 +77,9 @@
       <h1 class="text-2xl font-bold text-[hsl(var(--foreground))]">Settings</h1>
       <p class="text-[hsl(var(--muted-foreground))]">Configure system preferences and options</p>
     </div>
-    <Button variant="default" size="sm">
+    <Button variant="default" size="sm" disabled>
       <Save class="h-4 w-4" />
-      Save Changes
+      Config Immutable
     </Button>
   </div>
 

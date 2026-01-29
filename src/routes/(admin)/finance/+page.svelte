@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { adminApi } from '$lib/api/client';
   import { Button } from '$lib/components/ui';
   import { formatLoon, formatPercent, formatRelativeTime } from '$lib/utils';
   import {
@@ -12,69 +13,96 @@
     Users,
     Wallet,
   } from 'lucide-svelte';
+  import { onMount } from 'svelte';
 
-  // Stats
-  const systemStats = {
-    totalCirculation: 150_000_000_000,
-    dailyVolume: 2_847_392_045,
-    dailyChange: 12.5,
-    totalProfitToday: 847_392_045,
-    averageROI: 0.0847,
-    activeCapital: 89_472_384_923,
+  // Types
+  type Transaction = {
+    id: string;
+    type: string;
+    user: string;
+    bot: string | null;
+    amount: number;
+    timestamp: Date;
   };
 
-  const profitDistribution = {
+  // States
+  let loading = $state(true);
+
+  let systemStats = $state({
+    totalCirculation: 0,
+    dailyVolume: 0,
+    dailyChange: 0,
+    totalProfitToday: 0,
+    averageROI: 0,
+    activeCapital: 0,
+  });
+
+  let profitDistribution = $state({
     user: 0.7,
     enterprise: 0.2,
     bot: 0.1,
-    userAmount: 593_174_431,
-    enterpriseAmount: 169_478_409,
-    botAmount: 84_739_205,
-  };
+    userAmount: 0,
+    enterpriseAmount: 0,
+    botAmount: 0,
+  });
 
-  // Recent transactions
-  const recentTransactions = [
-    {
-      id: 'tx-001',
-      type: 'profit',
-      user: 'CooperTrader',
-      bot: 'Zeus-Prime',
-      amount: 48293,
-      timestamp: new Date(Date.now() - 120000),
-    },
-    {
-      id: 'tx-002',
-      type: 'rental',
-      user: 'CryptoMaster',
-      bot: 'Atlas-Alpha',
-      amount: -15000,
-      timestamp: new Date(Date.now() - 300000),
-    },
-    {
-      id: 'tx-003',
-      type: 'enterprise',
-      user: 'Enterprise Pool',
-      bot: null,
-      amount: 169478,
-      timestamp: new Date(Date.now() - 600000),
-    },
-    {
-      id: 'tx-004',
-      type: 'withdrawal',
-      user: 'NewbieTrader',
-      bot: null,
-      amount: -50000,
-      timestamp: new Date(Date.now() - 900000),
-    },
-    {
-      id: 'tx-005',
-      type: 'deposit',
-      user: 'WhaleUser',
-      bot: null,
-      amount: 1000000,
-      timestamp: new Date(Date.now() - 1200000),
-    },
-  ];
+  let recentTransactions = $state<Transaction[]>([]);
+  let topEarners = $state<{ rank: number; username: string; earned: number; bots: number }[]>([]);
+
+  async function loadData() {
+    loading = true;
+    try {
+      const [financeRes, transactionsRes, usersRes, motherRes] = await Promise.allSettled([
+        adminApi.getFinancialSummary(),
+        adminApi.getTransactions({ limit: 10 }),
+        adminApi.getUsers({ limit: 5 }),
+        adminApi.getMotherStatus(),
+      ]);
+
+      if (financeRes.status === 'fulfilled') {
+        systemStats.totalCirculation = financeRes.value.totalCapital;
+        systemStats.dailyVolume = financeRes.value.dailyProfit * 10;
+        systemStats.totalProfitToday = financeRes.value.dailyProfit;
+        systemStats.activeCapital = financeRes.value.userCapital;
+        systemStats.averageROI =
+          financeRes.value.dailyProfit / (financeRes.value.totalCapital || 1);
+      }
+
+      if (motherRes.status === 'fulfilled') {
+        profitDistribution.userAmount = motherRes.value.summary.total_profit * 0.7;
+        profitDistribution.enterpriseAmount = motherRes.value.summary.total_profit * 0.2;
+        profitDistribution.botAmount = motherRes.value.summary.total_profit * 0.1;
+      }
+
+      if (transactionsRes.status === 'fulfilled') {
+        recentTransactions = transactionsRes.value.items.map((t) => ({
+          id: t.id,
+          type: t.type,
+          user: t.userId || 'System',
+          bot: t.botId || null,
+          amount: t.amount,
+          timestamp: new Date(t.createdAt),
+        }));
+      }
+
+      if (usersRes.status === 'fulfilled') {
+        topEarners = usersRes.value.items.map((u, i) => ({
+          rank: i + 1,
+          username: u.username,
+          earned: u.totalProfit,
+          bots: u.activeRentals,
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to load finance data:', error);
+    } finally {
+      loading = false;
+    }
+  }
+
+  onMount(() => {
+    loadData();
+  });
 
   const typeColors: Record<string, { bg: string; text: string }> = {
     profit: { bg: 'bg-[hsl(var(--success))]/20', text: 'text-[hsl(var(--success))]' },
@@ -83,14 +111,6 @@
     withdrawal: { bg: 'bg-[hsl(var(--destructive))]/20', text: 'text-[hsl(var(--destructive))]' },
     deposit: { bg: 'bg-[hsl(var(--primary))]/20', text: 'text-[hsl(var(--primary))]' },
   };
-
-  const topEarners = [
-    { rank: 1, username: 'CooperTrader', earned: 2847391, bots: 3 },
-    { rank: 2, username: 'CryptoKing', earned: 2341567, bots: 5 },
-    { rank: 3, username: 'TradingPro', earned: 1934567, bots: 4 },
-    { rank: 4, username: 'CryptoMaster', earned: 1234567, bots: 2 },
-    { rank: 5, username: 'AlphaTrader', earned: 987654, bots: 3 },
-  ];
 
   const rankColors = [
     'text-[hsl(var(--gold))]',
@@ -111,9 +131,9 @@
       <p class="text-[hsl(var(--muted-foreground))]">LOON economy metrics and transactions</p>
     </div>
     <div class="flex gap-2">
-      <Button variant="outline" size="sm">
-        <RefreshCw class="h-4 w-4" />
-        Refresh
+      <Button variant="outline" size="sm" onclick={loadData} disabled={loading}>
+        <RefreshCw class="h-4 w-4 {loading ? 'animate-spin' : ''}" />
+        {loading ? 'Loading...' : 'Refresh'}
       </Button>
       <Button variant="outline" size="sm">Export Report</Button>
     </div>

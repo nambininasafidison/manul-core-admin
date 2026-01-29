@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { adminApi } from '$lib/api/client';
   import { Button, Modal } from '$lib/components/ui';
   import { formatLoon } from '$lib/utils';
   import {
@@ -14,98 +15,96 @@
     Search,
     Zap,
   } from 'lucide-svelte';
+  import { onMount } from 'svelte';
+
+  // Types
+  type RentalData = {
+    id: string;
+    user: string;
+    bot: { name: string; tier: string; generation: number };
+    startDate: Date;
+    endDate: Date;
+    dailyRate: number;
+    totalPaid: number;
+    profit: number;
+    status: string;
+  };
 
   // States
   let searchQuery = $state('');
   let selectedStatus = $state('all');
   let showRentalModal = $state(false);
-  let selectedRental = $state<(typeof activeRentals)[0] | null>(null);
+  let selectedRental = $state<RentalData | null>(null);
+  let loading = $state(true);
+  let rentals = $state<RentalData[]>([]);
 
-  // Mock data
-  const stats = {
-    totalActive: 847,
-    totalRevenue: 2_847_392_045,
-    avgDuration: '14.5 days',
-    expiringToday: 23,
-  };
+  let stats = $state({
+    totalActive: 0,
+    totalRevenue: 0,
+    avgDuration: '0 days',
+    expiringToday: 0,
+  });
 
-  const activeRentals = [
-    {
-      id: 'rental-001',
-      user: 'CooperTrader',
-      bot: {
-        name: 'Zeus-Prime',
-        tier: 'legendary',
-        generation: 5,
-      },
-      startDate: new Date(Date.now() - 86400000 * 10),
-      endDate: new Date(Date.now() + 86400000 * 20),
-      dailyRate: 5000,
-      totalPaid: 50000,
-      profit: 234567,
-      status: 'active',
-    },
-    {
-      id: 'rental-002',
-      user: 'CryptoMaster',
-      bot: {
-        name: 'Atlas-Alpha',
-        tier: 'epic',
-        generation: 4,
-      },
-      startDate: new Date(Date.now() - 86400000 * 5),
-      endDate: new Date(Date.now() + 86400000 * 2),
-      dailyRate: 3000,
-      totalPaid: 21000,
-      profit: 89234,
-      status: 'expiring',
-    },
-    {
-      id: 'rental-003',
-      user: 'NewbieTrader',
-      bot: {
-        name: 'Mercury-Beta',
-        tier: 'rare',
-        generation: 3,
-      },
-      startDate: new Date(Date.now() - 86400000 * 20),
-      endDate: new Date(Date.now() - 86400000 * 1),
-      dailyRate: 1500,
-      totalPaid: 30000,
-      profit: 45678,
-      status: 'expired',
-    },
-    {
-      id: 'rental-004',
-      user: 'WhaleUser',
-      bot: {
-        name: 'Prometheus',
-        tier: 'mythic',
-        generation: 7,
-      },
-      startDate: new Date(Date.now() - 86400000 * 3),
-      endDate: new Date(Date.now() + 86400000 * 27),
-      dailyRate: 10000,
-      totalPaid: 30000,
-      profit: 567890,
-      status: 'active',
-    },
-    {
-      id: 'rental-005',
-      user: 'AlphaTrader',
-      bot: {
-        name: 'Athena-Zeta',
-        tier: 'epic',
-        generation: 4,
-      },
-      startDate: new Date(Date.now() - 86400000 * 7),
-      endDate: new Date(Date.now() + 86400000 * 0.5),
-      dailyRate: 2500,
-      totalPaid: 17500,
-      profit: 34567,
-      status: 'expiring',
-    },
-  ];
+  function getTierFromGeneration(gen: number): string {
+    if (gen >= 7) return 'mythic';
+    if (gen >= 5) return 'legendary';
+    if (gen >= 4) return 'epic';
+    if (gen >= 3) return 'rare';
+    return 'common';
+  }
+
+  async function loadData() {
+    loading = true;
+    try {
+      const res = await adminApi.getRentals({ limit: 100 });
+      rentals = res.rentals.map((r) => {
+        const startDate = new Date(r.startDate);
+        const endDate = new Date(r.endDate);
+        const days = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / 86400000));
+        const now = Date.now();
+        let status = 'active';
+        if (endDate.getTime() < now) status = 'expired';
+        else if (endDate.getTime() - now < 86400000 * 2) status = 'expiring';
+
+        return {
+          id: r.id,
+          user: r.userName,
+          bot: {
+            name: r.botName,
+            tier: getTierFromGeneration(4), // Default to epic
+            generation: 4,
+          },
+          startDate,
+          endDate,
+          dailyRate: Math.floor(r.amount / days),
+          totalPaid: r.amount,
+          profit: r.profit,
+          status,
+        };
+      });
+
+      stats.totalActive = res.stats.active_contracts;
+      stats.totalRevenue = res.stats.total_capital;
+      stats.expiringToday = rentals.filter((r) => r.status === 'expiring').length;
+
+      // Calculate average duration
+      if (rentals.length > 0) {
+        const avgDays =
+          rentals.reduce((sum, r) => {
+            return sum + (r.endDate.getTime() - r.startDate.getTime()) / 86400000;
+          }, 0) / rentals.length;
+        stats.avgDuration = `${avgDays.toFixed(1)} days`;
+      }
+    } catch (error) {
+      console.error('Failed to load rentals:', error);
+    } finally {
+      loading = false;
+    }
+  }
+
+  onMount(() => {
+    loadData();
+  });
 
   const statusStyles: Record<string, { bg: string; text: string }> = {
     active: { bg: 'bg-[hsl(var(--success))]/20', text: 'text-[hsl(var(--success))]' },
@@ -117,7 +116,7 @@
     },
   };
 
-  function viewRental(rental: (typeof activeRentals)[0]) {
+  function viewRental(rental: RentalData) {
     selectedRental = rental;
     showRentalModal = true;
   }
@@ -127,7 +126,7 @@
   }
 
   const filteredRentals = $derived(
-    activeRentals.filter((rental) => {
+    rentals.filter((rental) => {
       const matchesSearch =
         rental.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
         rental.bot.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -149,9 +148,9 @@
       <p class="text-[hsl(var(--muted-foreground))]">Active bot rentals and revenue tracking</p>
     </div>
     <div class="flex gap-2">
-      <Button variant="outline" size="sm">
-        <RefreshCw class="h-4 w-4" />
-        Refresh
+      <Button variant="outline" size="sm" onclick={loadData} disabled={loading}>
+        <RefreshCw class="h-4 w-4 {loading ? 'animate-spin' : ''}" />
+        {loading ? 'Loading...' : 'Refresh'}
       </Button>
       <Button variant="outline" size="sm">Export</Button>
     </div>

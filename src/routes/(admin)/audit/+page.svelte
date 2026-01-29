@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { adminApi } from '$lib/api/client';
   import { Button } from '$lib/components/ui';
   import { formatRelativeTime } from '$lib/utils';
   import {
@@ -14,82 +15,93 @@
     Shield,
     User,
   } from 'lucide-svelte';
+  import { onMount } from 'svelte';
+
+  // Types
+  type AuditLog = {
+    id: string;
+    timestamp: Date;
+    type: string;
+    severity: string;
+    action: string;
+    actor: string;
+    details: string;
+    resource: string;
+  };
 
   // States
   let searchQuery = $state('');
   let selectedType = $state('all');
   let selectedSeverity = $state('all');
+  let loading = $state(true);
 
-  // Mock data
-  const stats = {
-    totalLogs: 284739,
-    criticalEvents: 12,
-    warningsToday: 847,
-    lastScan: new Date(Date.now() - 300000),
-  };
+  let stats = $state({
+    totalLogs: 0,
+    criticalEvents: 0,
+    warningsToday: 0,
+    lastScan: new Date(),
+  });
 
-  const auditLogs = [
-    {
-      id: 'log-001',
-      timestamp: new Date(Date.now() - 60000),
-      type: 'security',
-      severity: 'critical',
-      action: 'Failed login attempt',
-      actor: 'unknown@1.2.3.4',
-      details: '5 failed attempts from IP 1.2.3.4',
-      resource: 'Auth System',
-    },
-    {
-      id: 'log-002',
-      timestamp: new Date(Date.now() - 180000),
-      type: 'user',
-      severity: 'info',
-      action: 'User registered',
-      actor: 'NewUser123',
-      details: 'New user registration completed',
-      resource: 'User Management',
-    },
-    {
-      id: 'log-003',
-      timestamp: new Date(Date.now() - 300000),
-      type: 'bot',
-      severity: 'warning',
-      action: 'Bot performance degraded',
-      actor: 'Zeus-Prime',
-      details: 'Win rate dropped below threshold',
-      resource: 'Bot Engine',
-    },
-    {
-      id: 'log-004',
-      timestamp: new Date(Date.now() - 600000),
-      type: 'finance',
-      severity: 'info',
-      action: 'Large withdrawal',
-      actor: 'WhaleUser',
-      details: 'Withdrawal of Ⱡ1,000,000',
-      resource: 'Finance System',
-    },
-    {
-      id: 'log-005',
-      timestamp: new Date(Date.now() - 900000),
-      type: 'system',
-      severity: 'info',
-      action: 'Database backup completed',
-      actor: 'System',
-      details: 'Automatic backup successful',
-      resource: 'Database',
-    },
-    {
-      id: 'log-006',
-      timestamp: new Date(Date.now() - 1200000),
-      type: 'security',
-      severity: 'warning',
-      action: 'Suspicious API pattern',
-      actor: 'api-client-892',
-      details: 'Unusual request pattern detected',
-      resource: 'API Gateway',
-    },
-  ];
+  let auditLogs = $state<AuditLog[]>([]);
+
+  async function loadData() {
+    loading = true;
+    try {
+      const [logsRes, securityRes] = await Promise.allSettled([
+        adminApi.getAuditLogs({ limit: 50 }),
+        adminApi.getSecurityEvents({ limit: 20 }),
+      ]);
+
+      if (logsRes.status === 'fulfilled') {
+        auditLogs = logsRes.value.items.map((l) => ({
+          id: l.id,
+          timestamp: new Date(l.timestamp),
+          type: l.actorType,
+          severity: 'info',
+          action: l.action,
+          actor: l.actorId,
+          details: JSON.stringify(l.details || {}),
+          resource: l.targetType,
+        }));
+        stats.totalLogs = logsRes.value.total;
+      }
+
+      if (securityRes.status === 'fulfilled') {
+        // Merge security events with audit logs
+        const securityLogs = securityRes.value.items.map((s) => ({
+          id: s.id,
+          timestamp: new Date(s.timestamp),
+          type: 'security',
+          severity: s.severity,
+          action: s.event,
+          actor: s.source,
+          details: JSON.stringify(s.details || {}),
+          resource: 'Security System',
+        }));
+
+        auditLogs = [...securityLogs, ...auditLogs].sort(
+          (a, b) => b.timestamp.getTime() - a.timestamp.getTime(),
+        );
+
+        stats.criticalEvents = securityRes.value.items.filter(
+          (s) => s.severity === 'critical',
+        ).length;
+        stats.warningsToday = securityRes.value.items.filter(
+          (s) => s.severity === 'warning',
+        ).length;
+      }
+
+      stats.lastScan = new Date();
+    } catch (error) {
+      console.error('Failed to load audit logs:', error);
+    } finally {
+      loading = false;
+    }
+  }
+
+  onMount(() => {
+    loadData();
+  });
 
   const typeIcons: Record<string, typeof Shield> = {
     security: Shield,
@@ -147,9 +159,9 @@
       <p class="text-[hsl(var(--muted-foreground))]">System activity and security events</p>
     </div>
     <div class="flex gap-2">
-      <Button variant="outline" size="sm">
-        <RefreshCw class="h-4 w-4" />
-        Refresh
+      <Button variant="outline" size="sm" onclick={loadData} disabled={loading}>
+        <RefreshCw class="h-4 w-4 {loading ? 'animate-spin' : ''}" />
+        {loading ? 'Loading...' : 'Refresh'}
       </Button>
       <Button variant="outline" size="sm">
         <Download class="h-4 w-4" />
