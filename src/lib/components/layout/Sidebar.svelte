@@ -4,6 +4,7 @@
   import { cn } from '$lib/utils';
   import {
     Activity,
+    ArrowLeftRight,
     Bot,
     Coins,
     Database,
@@ -30,6 +31,7 @@
     { href: '/users', label: 'Users', icon: Users },
     { href: '/finance', label: 'Finance', icon: Coins },
     { href: '/rentals', label: 'Rentals', icon: Activity },
+    { href: '/allocations', label: 'Allocations', icon: ArrowLeftRight },
   ];
 
   const secondaryItems = [

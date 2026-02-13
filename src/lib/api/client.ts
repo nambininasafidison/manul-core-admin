@@ -590,6 +590,103 @@ class AdminApiClient {
       examples: string[];
     }>('/naming/examples');
   }
+
+  // ====================================================================
+  // 💰 Bot-to-Bot Autonomous Capital Allocation (LECTURE SEULE)
+  // ====================================================================
+
+  async getAllocations(params?: { page?: number; limit?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.set('page', params.page.toString());
+    if (params?.limit) searchParams.set('limit', params.limit.toString());
+    const query = searchParams.toString();
+    return this.fetch<{
+      allocations: Array<{
+        id: string;
+        investor_id: string;
+        investor_name: string;
+        trader_id: string;
+        trader_name: string;
+        capital: number;
+        strategy: string;
+        status: string;
+        roi: number;
+        started_at: string;
+        expires_at: string;
+      }>;
+      total: number;
+    }>(`/allocations${query ? `?${query}` : ''}`);
+  }
+
+  async getAllocationStats() {
+    return this.fetch<{
+      total_allocations: number;
+      active_allocations: number;
+      total_capital_allocated: number;
+      avg_roi: number;
+      total_profit: number;
+    }>('/allocations/stats');
+  }
+
+  async getAllocation(id: string) {
+    return this.fetch<{
+      id: string;
+      investor_id: string;
+      investor_name: string;
+      trader_id: string;
+      trader_name: string;
+      capital: number;
+      strategy: string;
+      status: string;
+      roi: number;
+      started_at: string;
+      expires_at: string;
+    }>(`/allocations/${id}`);
+  }
+
+  async getBotAllocations(botId: string) {
+    return this.fetch<{
+      as_investor: Array<{
+        id: string;
+        trader_name: string;
+        capital: number;
+        roi: number;
+        status: string;
+      }>;
+      as_trader: Array<{
+        id: string;
+        investor_name: string;
+        capital: number;
+        roi: number;
+        status: string;
+      }>;
+    }>(`/allocations/bot/${botId}`);
+  }
+
+  // ====================================================================
+  // 🔒 Security / 📋 Compliance / 🏛️ Governance / 💹 Exchanges
+  // ====================================================================
+
+  async getSecurityStatus() {
+    // Uses /api/v1/security/status
+    const response = await fetch('/api/v1/security/status', {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(this.adminToken && { Authorization: `Bearer ${this.adminToken}` }),
+      },
+    });
+    return response.json();
+  }
+
+  async getExchangesList() {
+    const response = await fetch('/api/v1/exchanges', {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(this.adminToken && { Authorization: `Bearer ${this.adminToken}` }),
+      },
+    });
+    return response.json();
+  }
 }
 
 export const adminApi = new AdminApiClient();
