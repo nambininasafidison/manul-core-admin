@@ -3,14 +3,14 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-	plugins: [tailwindcss(), sveltekit()],
-	server: {
-		port: 5174, // Different port from main interface
-		proxy: {
-			'/api': {
-				target: 'http://localhost:8080',
-				changeOrigin: true
-			}
-		}
-	}
+  plugins: [tailwindcss(), sveltekit()],
+  server: {
+    port: 5174,
+    proxy: {
+      '/api': {
+        target: process.env.PUBLIC_API_URL || 'http://localhost:8080',
+        changeOrigin: true,
+      },
+    },
+  },
 });

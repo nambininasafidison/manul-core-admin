@@ -1,11 +1,13 @@
 /**
  * Admin API Client
  *
- * Client pour communiquer avec le backend Rust Manul Core
- * Intégré avec les vrais endpoints backend
+ * Client pour communiquer avec le backend Rust Manul Core.
+ * Le X-Admin-Secret est injecté côté serveur par le proxy SvelteKit
+ * (routes/api/admin/[...path]/+server.ts) — il ne passe JAMAIS par le browser.
  */
+import { config } from '$lib/config';
 
-const API_BASE = '/api/admin';
+const API_BASE = config.apiBase;
 
 interface ApiResponse<T> {
   success: boolean;
@@ -56,7 +58,6 @@ class AdminApiClient {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...(this.adminToken && { Authorization: `Bearer ${this.adminToken}` }),
-      ...(this.adminToken && { 'X-Admin-Secret': this.adminToken }),
       ...options.headers,
     };
 

@@ -26,10 +26,7 @@ services:
       - NODE_ENV=${NODE_ENV:-development}
       - PUBLIC_API_URL=${PUBLIC_API_URL:-http://manul-backend:8080}
       - PUBLIC_ENV=${PUBLIC_ENV:-development}
-      - PUBLIC_ADMIN_SECRET=${PUBLIC_ADMIN_SECRET:-}
-      - PUBLIC_SESSION_TIMEOUT=${PUBLIC_SESSION_TIMEOUT:-3600}
-      - PUBLIC_REQUIRE_2FA=${PUBLIC_REQUIRE_2FA:-true}
-      - PUBLIC_WEBSOCKET_ENABLED=${PUBLIC_WEBSOCKET_ENABLED:-true}
+      - ADMIN_SECRET=${ADMIN_SECRET:-}
     networks:
       - manul-network
     depends_on:
@@ -61,7 +58,7 @@ services:
       - '${BACKEND_PORT:-8080}:8080'
     environment:
       - RUST_LOG=${RUST_LOG:-info}
-      - DATABASE_URL=${DATABASE_URL:-postgres://manul:manul@postgres:5432/manul}
+      - DATABASE_URL=${DATABASE_URL:-postgres://manul:changeme@postgres:5432/manul}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
     networks:
       - manul-network

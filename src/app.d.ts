@@ -7,6 +7,8 @@ declare global {
       code?: string;
     }
     interface Locals {
+      /** ADMIN_SECRET from server env — never sent to browser */
+      adminSecret: string;
       admin?: {
         id: string;
         username: string;
