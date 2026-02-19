@@ -1,6 +1,7 @@
 <script lang="ts">
   import { adminApi } from '$lib/api/client';
   import { Button } from '$lib/components/ui';
+  import { toastStore } from '$lib/stores/auth';
   import {
     Bell,
     Key,
@@ -48,6 +49,7 @@
       systemConfig = configRes;
     } catch (error) {
       console.error('Failed to load config:', error);
+      toastStore.add('error', 'Failed to load system configuration');
     } finally {
       loading = false;
     }
@@ -56,6 +58,74 @@
   onMount(() => {
     loadData();
   });
+
+  function handleRegenerateKey() {
+    toastStore.add(
+      'warning',
+      'API key regeneration disabled in read-only admin mode. Contact DevOps.',
+    );
+  }
+
+  function handleClearCache() {
+    toastStore.add(
+      'info',
+      'Cache clearing disabled in read-only admin mode. Cache is managed automatically.',
+    );
+  }
+
+  function handleResetDatabase() {
+    toastStore.add(
+      'error',
+      'Database reset is disabled in read-only admin mode. This requires direct server access.',
+    );
+  }
+
+  function handleToggleDarkMode() {
+    isDarkMode = !isDarkMode;
+    toastStore.add('info', `Dark mode ${isDarkMode ? 'enabled' : 'disabled'} (local only)`);
+  }
+
+  function handleToggleEmail() {
+    emailNotifications = !emailNotifications;
+    toastStore.add(
+      'info',
+      `Email notifications ${emailNotifications ? 'enabled' : 'disabled'} (local only)`,
+    );
+  }
+
+  function handleTogglePush() {
+    pushNotifications = !pushNotifications;
+    toastStore.add(
+      'info',
+      `Push notifications ${pushNotifications ? 'enabled' : 'disabled'} (local only)`,
+    );
+  }
+
+  function handleToggle2FA() {
+    twoFactorEnabled = !twoFactorEnabled;
+    toastStore.add(
+      'warning',
+      '2FA toggle is a display-only setting. Actual 2FA is always enforced.',
+    );
+    twoFactorEnabled = true;
+  }
+
+  function handleToggleAutoBackup() {
+    autoBackup = !autoBackup;
+    toastStore.add(
+      'info',
+      `Auto backup display ${autoBackup ? 'enabled' : 'disabled'} (actual backups are always active)`,
+    );
+  }
+
+  function handleToggleMaintenance() {
+    maintenanceMode = !maintenanceMode;
+    toastStore.add(
+      'warning',
+      'Maintenance mode toggle disabled in read-only admin. Use deployment config.',
+    );
+    maintenanceMode = false;
+  }
 
   const tabs = [
     { id: 'general', label: 'General', icon: Settings },
@@ -186,7 +256,7 @@
             class="relative h-6 w-11 rounded-full transition-colors {isDarkMode
               ? 'bg-[hsl(var(--primary))]'
               : 'bg-[hsl(var(--secondary))]'}"
-            onclick={() => (isDarkMode = !isDarkMode)}
+            onclick={handleToggleDarkMode}
           >
             <span
               class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform {isDarkMode
@@ -228,7 +298,7 @@
               class="relative h-6 w-11 rounded-full transition-colors {emailNotifications
                 ? 'bg-[hsl(var(--primary))]'
                 : 'bg-[hsl(var(--secondary))]'}"
-              onclick={() => (emailNotifications = !emailNotifications)}
+              onclick={handleToggleEmail}
             >
               <span
                 class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform {emailNotifications
@@ -261,7 +331,7 @@
               class="relative h-6 w-11 rounded-full transition-colors {pushNotifications
                 ? 'bg-[hsl(var(--primary))]'
                 : 'bg-[hsl(var(--secondary))]'}"
-              onclick={() => (pushNotifications = !pushNotifications)}
+              onclick={handleTogglePush}
             >
               <span
                 class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform {pushNotifications
@@ -302,7 +372,7 @@
               class="relative h-6 w-11 rounded-full transition-colors {twoFactorEnabled
                 ? 'bg-[hsl(var(--primary))]'
                 : 'bg-[hsl(var(--secondary))]'}"
-              onclick={() => (twoFactorEnabled = !twoFactorEnabled)}
+              onclick={handleToggle2FA}
             >
               <span
                 class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform {twoFactorEnabled
@@ -324,7 +394,7 @@
                   sk-****************************abc
                 </p>
               </div>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onclick={handleRegenerateKey}>
                 <RefreshCw class="h-4 w-4" />
                 Regenerate
               </Button>
@@ -397,7 +467,7 @@
               class="relative h-6 w-11 rounded-full transition-colors {autoBackup
                 ? 'bg-[hsl(var(--primary))]'
                 : 'bg-[hsl(var(--secondary))]'}"
-              onclick={() => (autoBackup = !autoBackup)}
+              onclick={handleToggleAutoBackup}
             >
               <span
                 class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform {autoBackup
@@ -430,7 +500,7 @@
               class="relative h-6 w-11 rounded-full transition-colors {maintenanceMode
                 ? 'bg-[hsl(var(--warning))]'
                 : 'bg-[hsl(var(--secondary))]'}"
-              onclick={() => (maintenanceMode = !maintenanceMode)}
+              onclick={handleToggleMaintenance}
             >
               <span
                 class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform {maintenanceMode
@@ -452,11 +522,13 @@
         <div class="flex flex-wrap gap-3">
           <button
             class="rounded-lg border border-[hsl(var(--destructive))] bg-transparent px-4 py-2 text-sm font-medium text-[hsl(var(--destructive))] transition-colors hover:bg-[hsl(var(--destructive))]/10"
+            onclick={handleClearCache}
           >
             Clear Cache
           </button>
           <button
             class="rounded-lg bg-[hsl(var(--destructive))] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[hsl(var(--destructive))]/90"
+            onclick={handleResetDatabase}
           >
             Reset Database
           </button>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { adminApi } from '$lib/api/client';
   import { Button } from '$lib/components/ui';
+  import { toastStore } from '$lib/stores/auth';
   import { formatRelativeTime } from '$lib/utils';
   import {
     Activity,
@@ -95,6 +96,7 @@
       ];
     } catch (error) {
       console.error('Failed to load database stats:', error);
+      toastStore.add('error', 'Failed to load database stats');
     } finally {
       loading = false;
     }
@@ -110,6 +112,43 @@
     vacuum: RefreshCw,
     reindex: Zap,
   };
+
+  function handleFullBackup() {
+    toastStore.add(
+      'info',
+      'Backups are automated via CronJob. Manual backup disabled in read-only mode.',
+    );
+  }
+
+  function handleVacuum() {
+    toastStore.add(
+      'info',
+      'Vacuum operations are scheduled automatically by PostgreSQL. Manual trigger disabled.',
+    );
+  }
+
+  function handleReindex() {
+    toastStore.add(
+      'info',
+      'Reindexing is managed by the automated maintenance window. Manual trigger disabled.',
+    );
+  }
+
+  function handleRunMigration() {
+    toastStore.add(
+      'warning',
+      'Migrations are applied during deployments. Manual trigger disabled in read-only mode.',
+    );
+  }
+
+  function getNextBackupText(): string {
+    const diff = dbStats.nextBackup.getTime() - Date.now();
+    if (diff <= 0) return 'Imminent';
+    const hours = Math.floor(diff / 3600000);
+    const minutes = Math.floor((diff % 3600000) / 60000);
+    if (hours > 0) return `In ${hours}h ${minutes}m`;
+    return `In ${minutes}m`;
+  }
 </script>
 
 <svelte:head>
@@ -339,7 +378,9 @@
           </div>
           <div>
             <p class="text-sm text-[hsl(var(--muted-foreground))]">Next Backup</p>
-            <p class="font-medium text-[hsl(var(--foreground))]">In 23 hours</p>
+            <p class="font-medium text-[hsl(var(--foreground))]">
+              {getNextBackupText()}
+            </p>
           </div>
         </div>
       </div>
@@ -352,6 +393,7 @@
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <button
         class="flex items-center gap-3 rounded-lg bg-[hsl(var(--secondary))]/30 p-4 text-left transition-colors hover:bg-[hsl(var(--secondary))]/50"
+        onclick={handleFullBackup}
       >
         <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--info))]/20">
           <Download class="h-5 w-5 text-[hsl(var(--info))]" />
@@ -363,6 +405,7 @@
       </button>
       <button
         class="flex items-center gap-3 rounded-lg bg-[hsl(var(--secondary))]/30 p-4 text-left transition-colors hover:bg-[hsl(var(--secondary))]/50"
+        onclick={handleVacuum}
       >
         <div
           class="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--primary))]/20"
@@ -376,6 +419,7 @@
       </button>
       <button
         class="flex items-center gap-3 rounded-lg bg-[hsl(var(--secondary))]/30 p-4 text-left transition-colors hover:bg-[hsl(var(--secondary))]/50"
+        onclick={handleReindex}
       >
         <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--gold))]/20">
           <Zap class="h-5 w-5 text-[hsl(var(--gold))]" />
@@ -387,6 +431,7 @@
       </button>
       <button
         class="flex items-center gap-3 rounded-lg bg-[hsl(var(--secondary))]/30 p-4 text-left transition-colors hover:bg-[hsl(var(--secondary))]/50"
+        onclick={handleRunMigration}
       >
         <div
           class="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--warning))]/20"

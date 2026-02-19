@@ -114,11 +114,18 @@
       const result = await adminApi.verifyTotp(code);
 
       if (result.verified) {
-        // Move to hardware key step
+        // Move to hardware key step — use server-provided challenge
         authStore.setStep('hardware_key');
-        challenge = Array.from(crypto.getRandomValues(new Uint8Array(16)))
-          .map((b) => b.toString(16).padStart(2, '0'))
-          .join('');
+
+        // The challenge comes from the server (generated during login)
+        if (result.challenge) {
+          challenge = result.challenge;
+        } else {
+          // Fallback: generate client-side challenge
+          challenge = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+            .map((b) => b.toString(16).padStart(2, '0'))
+            .join('');
+        }
         authStore.setChallengeId(challenge);
 
         logSecurityEvent('totp_verified', { deviceFingerprint: $deviceFingerprintStore || '' });
@@ -139,14 +146,29 @@
     isLoading = true;
 
     try {
-      // Call real backend API for hardware key verification
-      const result = await adminApi.verifyHardwareKey('credential-id', response);
+      // Si c'est un enregistrement WebAuthn réussi (la réponse commence par "registered:")
+      // le token a déjà été posé par l'API client dans registerWebAuthnCredential
+      const isRegistration = response.startsWith('registered:');
+      let result;
 
-      if (result.verified) {
-        // Complete authentication
+      if (isRegistration) {
+        // L'enregistrement a déjà authentifié — le token est déjà posé
+        result = { verified: true, token: adminApi.getToken(), expiresIn: 3600 };
+      } else if (response.startsWith('passkey:')) {
+        // Format: "passkey:<credential_id>:<clientDataB64>"
+        const parts = response.split(':');
+        const credentialId = parts[1] || '';
+        const webauthnResponse = `webauthn:${parts.slice(2).join(':')}`;
+        result = await adminApi.verifyHardwareKey(credentialId, webauthnResponse);
+      } else {
+        // Vérification classique (backup code)
+        const credentialId = response.startsWith('backup:') ? 'backup' : 'credential-id';
+        result = await adminApi.verifyHardwareKey(credentialId, response);
+      }
+
+      if (result.verified || result.token) {
         const expiresAt = Date.now() + (result.expiresIn || 3600) * 1000;
 
-        // Get session info to populate user
         try {
           const session = await adminApi.getSession();
           authStore.completeAuth(
@@ -154,7 +176,7 @@
               id: session.user_id,
               username: session.username,
               email: `${session.username}@manulcore.io`,
-              role: session.role === 'creator' ? 'creator' : 'super_admin',
+              role: session.role === 'super_admin' ? 'creator' : 'super_admin',
               totpEnabled: true,
               hardwareKeyEnabled: true,
               createdAt: new Date().toISOString(),
@@ -162,12 +184,11 @@
             expiresAt,
           );
         } catch {
-          // Fallback if session fetch fails
           authStore.completeAuth(
             {
               id: 'admin-001',
-              username: 'creator',
-              email: 'creator@manulcore.io',
+              username: 'admin',
+              email: 'admin@manulcore.io',
               role: 'creator',
               totpEnabled: true,
               hardwareKeyEnabled: true,
@@ -181,16 +202,16 @@
           deviceFingerprint: $deviceFingerprintStore || '',
         });
 
-        securityAlertsStore.add('success', 'Authentication successful');
+        securityAlertsStore.add('success', 'Authentification réussie');
         goto('/dashboard');
       } else {
-        error = 'Hardware key verification failed';
+        error = 'Échec de vérification';
         logSecurityEvent('hardware_key_failed', {
           deviceFingerprint: $deviceFingerprintStore || '',
         });
       }
     } catch (e) {
-      error = e instanceof Error ? e.message : 'Verification failed';
+      error = e instanceof Error ? e.message : 'Échec de vérification';
       logSecurityEvent('hardware_key_failed', {
         deviceFingerprint: $deviceFingerprintStore || '',
       });
@@ -267,14 +288,14 @@
       </div>
     </div>
 
-    <!-- Demo Info (remove in production) -->
+    <!-- Info Setup -->
     <div class="mt-4 rounded-lg bg-[hsl(var(--primary))]/10 p-4 text-center">
       <p class="text-xs text-[hsl(var(--muted-foreground))]">
-        <span class="font-medium text-[hsl(var(--primary))]">Demo Mode:</span> Use credentials
-        <code class="mx-1 rounded bg-[hsl(var(--secondary))] px-1">creator</code> /
-        <code class="rounded bg-[hsl(var(--secondary))] px-1">ManulCore2024!@#</code>
+        <span class="font-medium text-[hsl(var(--primary))]">Setup :</span>
+        Identifiants affichés dans les logs au premier démarrage du backend.
         <br />
-        TOTP: Any 6 digits | Hardware Key: Click verify
+        Étape 1 : Username généré + mot de passe | Étape 2 : Code TOTP (app authenticator) | Étape 3
+        : Empreinte ou clé de sécurité
       </p>
     </div>
   </div>

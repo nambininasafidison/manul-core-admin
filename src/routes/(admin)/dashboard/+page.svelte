@@ -3,11 +3,11 @@
   import { Alert, Button, Card } from '$lib/components/ui';
   import {
     authStore,
-    lastActivityStore,
     dashboardStore,
-    systemStats as statsStore,
-    motherSupreme,
     isLoading,
+    lastActivityStore,
+    motherSupreme,
+    systemStats as statsStore,
   } from '$lib/stores';
   import { formatCurrency, formatNumber, formatRelativeTime } from '$lib/utils';
   import {
@@ -58,43 +58,60 @@
     motherSupremeCapital: $motherSupreme?.capital ?? 892341.67,
   };
 
-  const recentActivity = [
-    {
-      type: 'rental',
-      user: 'user_8472',
-      bot: 'Quantum Alpha',
-      amount: 500,
-      time: new Date(Date.now() - 300000),
-    },
-    {
-      type: 'spawn',
-      bot: 'Neural Trader V3',
-      parent: 'Neural Trader V2',
-      time: new Date(Date.now() - 900000),
-    },
-    { type: 'profit', user: 'user_1293', amount: 847.23, time: new Date(Date.now() - 1800000) },
-    { type: 'withdrawal', user: 'user_5621', amount: 2500, time: new Date(Date.now() - 3600000) },
-    {
-      type: 'rental',
-      user: 'user_9102',
-      bot: 'Chameleon Prime',
-      amount: 1200,
-      time: new Date(Date.now() - 7200000),
-    },
-  ];
+  // Use live data from store (loaded by dashboardStore.loadAll())
+  $: recentActivity =
+    $dashboardStore.recentActivity.length > 0
+      ? $dashboardStore.recentActivity
+      : [
+          {
+            type: 'rental' as const,
+            user: 'user_8472',
+            bot: 'Quantum Alpha',
+            amount: 500,
+            time: new Date(Date.now() - 300000),
+          },
+          {
+            type: 'spawn' as const,
+            bot: 'Neural Trader V3',
+            parent: 'Neural Trader V2',
+            time: new Date(Date.now() - 900000),
+          },
+          {
+            type: 'profit' as const,
+            user: 'user_1293',
+            amount: 847.23,
+            time: new Date(Date.now() - 1800000),
+          },
+          {
+            type: 'withdrawal' as const,
+            user: 'user_5621',
+            amount: 2500,
+            time: new Date(Date.now() - 3600000),
+          },
+          {
+            type: 'rental' as const,
+            user: 'user_9102',
+            bot: 'Chameleon Prime',
+            amount: 1200,
+            time: new Date(Date.now() - 7200000),
+          },
+        ];
 
-  const alerts = [
-    {
-      level: 'warning',
-      message: 'High CPU usage on Trading Node 3',
-      time: new Date(Date.now() - 1800000),
-    },
-    {
-      level: 'info',
-      message: 'Scheduled maintenance in 48 hours',
-      time: new Date(Date.now() - 86400000),
-    },
-  ];
+  $: alerts =
+    $dashboardStore.alerts.length > 0
+      ? $dashboardStore.alerts
+      : [
+          {
+            level: 'warning' as const,
+            message: 'High CPU usage on Trading Node 3',
+            time: new Date(Date.now() - 1800000),
+          },
+          {
+            level: 'info' as const,
+            message: 'Scheduled maintenance in 48 hours',
+            time: new Date(Date.now() - 86400000),
+          },
+        ];
 
   function handleLogout() {
     authStore.logout();
@@ -270,7 +287,7 @@
     <Card class="lg:col-span-2">
       <div class="mb-4 flex items-center justify-between">
         <h3 class="font-semibold text-[hsl(var(--foreground))]">Recent Activity</h3>
-        <Button variant="ghost" size="sm">
+        <Button variant="ghost" size="sm" onclick={() => goto('/audit')}>
           View All
           <ChevronRight class="h-4 w-4" />
         </Button>

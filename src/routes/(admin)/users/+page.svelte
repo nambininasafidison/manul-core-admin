@@ -1,6 +1,7 @@
 <script lang="ts">
   import { adminApi } from '$lib/api/client';
   import { Button, Modal } from '$lib/components/ui';
+  import { toastStore } from '$lib/stores/auth';
   import { formatLoon, formatNumber, formatRelativeTime } from '$lib/utils';
   import {
     Ban,
@@ -79,6 +80,7 @@
       stats.totalCapital = users.reduce((sum, u) => sum + u.balance, 0);
     } catch (error) {
       console.error('Failed to load users:', error);
+      toastStore.add('error', 'Failed to load users');
     } finally {
       loading = false;
     }
@@ -91,6 +93,50 @@
   function viewUser(user: UserData) {
     selectedUser = user;
     showUserModal = true;
+  }
+
+  function handleExport() {
+    if (filteredUsers.length === 0) {
+      toastStore.add('warning', 'No users to export');
+      return;
+    }
+    const headers = [
+      'Username',
+      'Email',
+      'Balance',
+      'VIP Level',
+      'Status',
+      'Stars',
+      'Active Rentals',
+    ];
+    const rows = filteredUsers.map((u) => [
+      u.username,
+      u.email,
+      u.balance,
+      u.vip_level,
+      u.status,
+      u.stars,
+      u.active_rentals,
+    ]);
+    const csv = [headers.join(','), ...rows.map((r) => r.map((c) => `"${c}"`).join(','))].join(
+      '\n',
+    );
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `users-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toastStore.add('success', `Exported ${filteredUsers.length} users`);
+  }
+
+  function handleEditUser() {
+    toastStore.add('warning', 'User editing disabled in read-only admin mode');
+  }
+
+  function handleBanUser(username: string) {
+    toastStore.add('warning', `Ban/unban for ${username} disabled in read-only admin mode`);
   }
 
   const filteredUsers = $derived(
@@ -124,7 +170,7 @@
         <RefreshCw class="h-4 w-4 {loading ? 'animate-spin' : ''}" />
         {loading ? 'Loading...' : 'Refresh'}
       </Button>
-      <Button variant="outline" size="sm">Export</Button>
+      <Button variant="outline" size="sm" onclick={handleExport}>Export</Button>
     </div>
   </div>
 
@@ -323,18 +369,21 @@
                 </button>
                 <button
                   class="rounded-lg p-2 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))]"
+                  onclick={handleEditUser}
                 >
                   <Edit class="h-4 w-4" />
                 </button>
                 {#if user.status === 'banned'}
                   <button
                     class="rounded-lg p-2 text-[hsl(var(--success))] transition-colors hover:bg-[hsl(var(--success))]/20"
+                    onclick={() => handleBanUser(user.username)}
                   >
                     <Check class="h-4 w-4" />
                   </button>
                 {:else}
                   <button
                     class="rounded-lg p-2 text-[hsl(var(--destructive))] transition-colors hover:bg-[hsl(var(--destructive))]/20"
+                    onclick={() => handleBanUser(user.username)}
                   >
                     <Ban class="h-4 w-4" />
                   </button>
@@ -431,6 +480,7 @@
         {#if selectedUser.status === 'banned'}
           <button
             class="flex-1 rounded-lg bg-[hsl(var(--success))] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[hsl(var(--success))]/90"
+            onclick={() => handleBanUser(selectedUser?.username || '')}
           >
             <Check class="mr-2 inline h-4 w-4" />
             Unban User
@@ -438,6 +488,7 @@
         {:else}
           <button
             class="flex-1 rounded-lg bg-[hsl(var(--destructive))] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[hsl(var(--destructive))]/90"
+            onclick={() => handleBanUser(selectedUser?.username || '')}
           >
             <Ban class="mr-2 inline h-4 w-4" />
             Ban User

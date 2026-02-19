@@ -1,6 +1,7 @@
 <script lang="ts">
   import { adminApi } from '$lib/api/client';
   import { Button, Modal } from '$lib/components/ui';
+  import { toastStore } from '$lib/stores/auth';
   import { formatLoon } from '$lib/utils';
   import {
     Activity,
@@ -97,6 +98,7 @@
       }
     } catch (error) {
       console.error('Failed to load rentals:', error);
+      toastStore.add('error', 'Failed to load rental data');
     } finally {
       loading = false;
     }
@@ -119,6 +121,55 @@
   function viewRental(rental: RentalData) {
     selectedRental = rental;
     showRentalModal = true;
+  }
+
+  function handleExport() {
+    if (filteredRentals.length === 0) {
+      toastStore.add('warning', 'No rentals to export');
+      return;
+    }
+    const headers = [
+      'User',
+      'Bot',
+      'Tier',
+      'Status',
+      'Daily Rate',
+      'Total Paid',
+      'Profit',
+      'Start Date',
+      'End Date',
+    ];
+    const rows = filteredRentals.map((r) => [
+      r.user,
+      r.bot.name,
+      r.bot.tier,
+      r.status,
+      r.dailyRate,
+      r.totalPaid,
+      r.profit,
+      r.startDate.toISOString().slice(0, 10),
+      r.endDate.toISOString().slice(0, 10),
+    ]);
+    const csv = [headers.join(','), ...rows.map((r) => r.map((c) => `"${c}"`).join(','))].join(
+      '\n',
+    );
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rentals-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toastStore.add('success', `Exported ${filteredRentals.length} rentals`);
+  }
+
+  function handlePauseResume(rental: RentalData) {
+    const action = rental.status === 'paused' ? 'Resume' : 'Pause';
+    toastStore.add('warning', `${action} rental is disabled in read-only admin mode`);
+  }
+
+  function handleExtendRental() {
+    toastStore.add('warning', 'Rental extension is disabled in read-only admin mode');
   }
 
   function getDaysRemaining(endDate: Date): number {
@@ -152,7 +203,7 @@
         <RefreshCw class="h-4 w-4 {loading ? 'animate-spin' : ''}" />
         {loading ? 'Loading...' : 'Refresh'}
       </Button>
-      <Button variant="outline" size="sm">Export</Button>
+      <Button variant="outline" size="sm" onclick={handleExport}>Export</Button>
     </div>
   </div>
 
@@ -323,12 +374,14 @@
                 {#if rental.status === 'active'}
                   <button
                     class="rounded-lg p-2 text-[hsl(var(--warning))] transition-colors hover:bg-[hsl(var(--warning))]/20"
+                    onclick={() => handlePauseResume(rental)}
                   >
                     <Pause class="h-4 w-4" />
                   </button>
                 {:else if rental.status === 'paused'}
                   <button
                     class="rounded-lg p-2 text-[hsl(var(--success))] transition-colors hover:bg-[hsl(var(--success))]/20"
+                    onclick={() => handlePauseResume(rental)}
                   >
                     <Play class="h-4 w-4" />
                   </button>
@@ -426,6 +479,7 @@
         {#if selectedRental.status === 'active'}
           <button
             class="flex-1 rounded-lg bg-[hsl(var(--warning))] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[hsl(var(--warning))]/90"
+            onclick={() => handlePauseResume(selectedRental!)}
           >
             <Pause class="mr-2 inline h-4 w-4" />
             Pause Rental
@@ -433,6 +487,7 @@
         {:else if selectedRental.status === 'expiring'}
           <button
             class="flex-1 rounded-lg bg-[hsl(var(--primary))] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[hsl(var(--primary))]/90"
+            onclick={handleExtendRental}
           >
             <RefreshCw class="mr-2 inline h-4 w-4" />
             Extend Rental

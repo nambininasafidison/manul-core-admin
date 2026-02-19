@@ -1,85 +1,104 @@
 # ManulCore Admin Panel
 
-Interface d'administration pour la plateforme ManulCore.
+Interface d'administration et de monitoring pour la plateforme ManulCore.
 
-## Stack Technique
+> ⚠️ **Monitoring en lecture seule** — L'admin panel est un dashboard d'observation. Aucune action de modification n'est possible via l'UI. Le système (bots, trades, allocations) est entièrement autonome.
 
-- **Framework**: SvelteKit 2.0
-- **UI**: Svelte 5, TailwindCSS 4
-- **Auth**: Argon2 + TOTP + Hardware Keys
-- **Validation**: Zod
-- **State**: Svelte Stores
+## Stack technique
 
-## Structure
+| Composant | Technologie                                           |
+| --------- | ----------------------------------------------------- |
+| Framework | SvelteKit 2, Svelte 5                                 |
+| Styles    | TailwindCSS 4                                         |
+| Langage   | TypeScript 5                                          |
+| Auth      | Triple facteur (voir ci-dessous)                      |
+| State     | Svelte Stores (runes)                                 |
+| HTTP      | Proxy SvelteKit (X-Admin-Secret injecté côté serveur) |
+
+## Authentification admin
+
+Triple authentification séquentielle obligatoire :
+
+### Étape 1 — Identifiants
+
+- **Username** : généré par le système (format `manul_XXXXXX`), affiché dans les logs backend au premier démarrage
+- **Mot de passe** : valeur de la variable d'environnement `MANUL_ADMIN_PASSWORD` côté backend (défaut en dev : clé insecure)
+
+### Étape 2 — TOTP (Time-based One-Time Password)
+
+- Code 6 chiffres validé par `totp-rs` (RFC 6238, SHA1, 30 secondes)
+- Au premier démarrage du backend, le **secret Base32** est affiché dans les logs
+- Scanner ce secret dans une app authenticator (Google Authenticator, Authy, etc.)
+- Pour persister le secret entre redémarrages : `export MANUL_TOTP_SECRET=<base32_secret>`
+
+### Étape 3 — Passkey (WebAuthn)
+
+Le navigateur propose automatiquement les méthodes d'authentification disponibles :
+
+- **Fingerprint / Face ID** (biométrie intégrée à l'appareil)
+- **Microsoft Authenticator** (passkey sur téléphone)
+- **Google Passkey** (synchronisé via compte Google)
+- **YubiKey / clé de sécurité USB/NFC**
+
+Enregistré une fois au premier login, réutilisé aux connexions suivantes.
+
+**Urgence** : 10 codes à usage unique affichés au premier démarrage (pas dans les logs). Ne servent QUE si l'étape 3 échoue.
+
+> **Note** : `ADMIN_SECRET` dans le `.env` admin n'est PAS le mot de passe du login.
+> C'est le header `X-Admin-Secret` injecté par le proxy SvelteKit vers le backend.
+
+## Pages
+
+| Route        | Description                             | Fonctionnalités             |
+| ------------ | --------------------------------------- | --------------------------- |
+| `/login`     | Authentification triple facteur         | Credentials → TOTP → HW Key |
+| `/dashboard` | Vue d'ensemble, métriques temps réel    | Stats live, uptime, bots    |
+| `/bots`      | Liste complète des bots                 | Filtres, export CSV         |
+| `/users`     | Liste des utilisateurs                  | Filtres, export CSV         |
+| `/rentals`   | Contrats de location actifs             | Stats, export CSV           |
+| `/finance`   | Revenus, transactions, résumé financier | Export rapport CSV          |
+| `/security`  | Alertes sécurité, menaces, sessions     | Status temps réel           |
+| `/audit`     | Logs système et événements de sécurité  | Pagination, export CSV      |
+| `/database`  | Statistiques base de données            | Pool, tables, backups       |
+| `/settings`  | Configuration système (lecture seule)   | Paramètres actuels          |
+
+## Structure du projet
 
 ```
 src/
 ├── lib/
-│   ├── components/     # Composants réutilisables
-│   ├── stores/         # State management
-│   ├── api/            # Client API
-│   ├── utils/          # Utilitaires
-│   └── types/          # Types TypeScript
+│   ├── api/
+│   │   └── client.ts          # Client API admin (AdminApiClient)
+│   ├── components/
+│   │   ├── auth/              # CredentialsForm, TotpForm, HardwareKeyForm
+│   │   └── ui/                # Card, Button, Input, Alert, DataTable, Toast
+│   ├── stores/
+│   │   ├── auth.ts            # authStore, toastStore, securityAlertsStore
+│   │   └── ...
+│   ├── security/              # Device fingerprint, lockout, security events
+│   └── config/                # API base URL, env config
 ├── routes/
-│   ├── +layout.svelte
-│   ├── +page.svelte
-│   ├── dashboard/      # Tableau de bord
-│   ├── bots/           # Gestion bots
-│   ├── users/          # Gestion utilisateurs
-│   ├── rentals/        # Locations
-│   ├── finance/        # Finance
-│   ├── security/       # Sécurité
-│   ├── audit/          # Logs d'audit
-│   └── settings/       # Paramètres
-└── static/
+│   ├── +layout.svelte         # Layout principal avec Sidebar + Toast
+│   ├── login/+page.svelte     # Page login triple auth
+│   ├── dashboard/+page.svelte
+│   ├── bots/+page.svelte
+│   ├── users/+page.svelte
+│   ├── rentals/+page.svelte
+│   ├── finance/+page.svelte
+│   ├── security/+page.svelte
+│   ├── audit/+page.svelte
+│   ├── database/+page.svelte
+│   └── settings/+page.svelte
+└── hooks.server.ts            # Proxy API (injection X-Admin-Secret)
 ```
 
-## Pages
-
-> ⚠️ **Interface de monitoring uniquement** - Aucune action de modification n'est possible via l'UI.
-
-| Route        | Description                          |
-| ------------ | ------------------------------------ |
-| `/login`     | Authentification admin               |
-| `/dashboard` | Vue d'ensemble, métriques temps réel |
-| `/bots`      | Liste des bots (lecture seule)       |
-| `/users`     | Liste utilisateurs (lecture seule)   |
-| `/rentals`   | Locations actives                    |
-| `/finance`   | Revenus, transactions                |
-| `/security`  | Alertes sécurité                     |
-| `/audit`     | Logs système                         |
-| `/database`  | Stats base de données                |
-| `/settings`  | Configuration (lecture seule)        |
-
-## Composants
-
-| Composant   | Usage                      |
-| ----------- | -------------------------- |
-| `DataTable` | Tableaux paginés, triables |
-| `Chart`     | Graphiques (Chart.js)      |
-| `Modal`     | Dialogues modaux           |
-| `Toast`     | Notifications              |
-| `Sidebar`   | Navigation latérale        |
-| `Header`    | En-tête avec profil        |
-| `StatCard`  | Cartes de statistiques     |
-| `BotCard`   | Carte bot avec état        |
-| `UserCard`  | Carte utilisateur          |
-| `SearchBar` | Recherche globale          |
-
-## Installation
+## Installation & Développement
 
 ```bash
 cd manul-core-admin
 npm install
+npm run dev     # http://localhost:5173
 ```
-
-## Développement
-
-```bash
-npm run dev
-```
-
-Accès: `http://localhost:5173`
 
 ## Build Production
 
@@ -95,26 +114,23 @@ docker build -t manulcore-admin .
 docker run -p 3001:3000 manulcore-admin
 ```
 
-## Variables d'Environnement
+## Variables d'environnement
 
 ```bash
-PUBLIC_API_URL=https://api.manulcore.io
-PUBLIC_WS_URL=wss://api.manulcore.io/ws
+# Configuration API
+PUBLIC_API_URL=https://api.manulcore.io     # URL du backend
+ADMIN_SECRET=your_admin_secret              # Injecté par le proxy serveur SvelteKit
 ```
 
-## Authentification
+## Système de notifications
 
-Triple authentification requise:
+Le panel utilise un système de **toast notifications** (`toastStore`) :
 
-1. Mot de passe (Argon2)
-2. TOTP (Google Authenticator)
-3. Hardware Key (WebAuthn) - optionnel
+```typescript
+toastStore.add('success', 'Operation completed');
+toastStore.add('error', 'Something went wrong');
+toastStore.add('info', 'Read-only: no modifications allowed');
+toastStore.add('warning', 'Attention required');
+```
 
-## Permissions
-
-| Rôle        | Accès                    |
-| ----------- | ------------------------ |
-| Super Admin | Tout                     |
-| Admin       | Bots, Users, Rentals     |
-| Finance     | Finance, Audit           |
-| Support     | Users (lecture), Rentals |
+> Signature : `toastStore.add(type, message)` — type en premier, message en second.

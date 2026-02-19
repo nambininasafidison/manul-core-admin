@@ -1,6 +1,7 @@
 <script lang="ts">
   import { adminApi } from '$lib/api/client';
   import { Button, Modal } from '$lib/components/ui';
+  import { toastStore } from '$lib/stores/auth';
   import { formatLoon, formatNumber } from '$lib/utils';
   import { Bot, Edit, Eye, Pause, Play, RefreshCw, Search, TrendingUp, Zap } from 'lucide-svelte';
   import { onMount } from 'svelte';
@@ -87,6 +88,7 @@
       stats.trainingBots = bots.filter((b) => b.status === 'training').length;
     } catch (error) {
       console.error('Failed to load bots:', error);
+      toastStore.add('error', 'Failed to load bots data');
     } finally {
       loading = false;
     }
@@ -99,6 +101,43 @@
   function viewBot(bot: BotData) {
     selectedBot = bot;
     showBotModal = true;
+  }
+
+  function handleExport() {
+    if (filteredBots.length === 0) {
+      toastStore.add('warning', 'No bots to export');
+      return;
+    }
+    const headers = ['Name', 'Tier', 'Generation', 'Status', 'Win Rate', 'Profit', 'Rentals'];
+    const rows = filteredBots.map((b) => [
+      b.name,
+      b.tier,
+      b.generation,
+      b.status,
+      (b.performance.winRate * 100).toFixed(1) + '%',
+      b.performance.totalProfit,
+      b.rentals,
+    ]);
+    const csv = [headers.join(','), ...rows.map((r) => r.map((c) => `"${c}"`).join(','))].join(
+      '\n',
+    );
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bots-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toastStore.add('success', `Exported ${filteredBots.length} bots`);
+  }
+
+  function handleEditBot() {
+    toastStore.add('warning', 'Bot editing disabled in read-only admin mode');
+  }
+
+  function handleToggleBotStatus(bot: BotData) {
+    const action = bot.status === 'paused' ? 'resume' : 'pause';
+    toastStore.add('info', `Bot ${action} is managed automatically by the evolution engine`);
   }
 
   const filteredBots = $derived(
@@ -127,7 +166,7 @@
         <RefreshCw class="h-4 w-4 {loading ? 'animate-spin' : ''}" />
         {loading ? 'Loading...' : 'Refresh'}
       </Button>
-      <Button variant="outline" size="sm">Export</Button>
+      <Button variant="outline" size="sm" onclick={handleExport}>Export</Button>
     </div>
   </div>
 
@@ -316,18 +355,21 @@
                 </button>
                 <button
                   class="rounded-lg p-2 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))]"
+                  onclick={handleEditBot}
                 >
                   <Edit class="h-4 w-4" />
                 </button>
                 {#if bot.status === 'paused'}
                   <button
                     class="rounded-lg p-2 text-[hsl(var(--success))] transition-colors hover:bg-[hsl(var(--success))]/20"
+                    onclick={() => handleToggleBotStatus(bot)}
                   >
                     <Play class="h-4 w-4" />
                   </button>
                 {:else}
                   <button
                     class="rounded-lg p-2 text-[hsl(var(--warning))] transition-colors hover:bg-[hsl(var(--warning))]/20"
+                    onclick={() => handleToggleBotStatus(bot)}
                   >
                     <Pause class="h-4 w-4" />
                   </button>
@@ -410,6 +452,7 @@
         </button>
         <button
           class="flex-1 rounded-lg bg-[hsl(var(--primary))] px-4 py-2.5 text-sm font-medium text-[hsl(var(--primary-foreground))] transition-colors hover:bg-[hsl(var(--primary))]/90"
+          onclick={handleEditBot}
         >
           <Edit class="mr-2 inline h-4 w-4" />
           Edit Bot

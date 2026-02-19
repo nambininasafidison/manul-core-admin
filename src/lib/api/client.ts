@@ -108,13 +108,15 @@ class AdminApiClient {
   }
 
   async verifyTotp(code: string) {
-    const result = await this.fetch<{ success: boolean; token: string; expires_in: number }>(
-      '/auth/totp/verify',
-      {
-        method: 'POST',
-        body: JSON.stringify({ code, session_token: this.sessionToken }),
-      },
-    );
+    const result = await this.fetch<{
+      success: boolean;
+      token: string;
+      expires_in: number;
+      challenge?: string;
+    }>('/auth/totp/verify', {
+      method: 'POST',
+      body: JSON.stringify({ code, session_token: this.sessionToken }),
+    });
 
     if (result.token) {
       this.setToken(result.token);
@@ -124,6 +126,7 @@ class AdminApiClient {
       verified: result.success,
       token: result.token,
       expiresIn: result.expires_in,
+      challenge: result.challenge,
     };
   }
 
@@ -149,6 +152,87 @@ class AdminApiClient {
       token: result.token,
       expiresIn: result.expires_in,
     };
+  }
+
+  /**
+   * Obtenir les options pour enregistrer un nouveau credential WebAuthn
+   * (passkey: fingerprint, security key, Microsoft Authenticator, Google Passkey...)
+   * Si authenticatorType n'est pas spécifié, le serveur omet authenticatorAttachment
+   * et le navigateur propose TOUTES les options disponibles.
+   */
+  async getWebAuthnRegisterOptions(authenticatorType?: 'platform' | 'cross-platform') {
+    return this.fetch<{
+      challenge: string;
+      rp: { name: string; id: string };
+      user: { id: string; name: string; displayName: string };
+      pubKeyCredParams: Array<{ type: string; alg: number }>;
+      authenticatorSelection: {
+        authenticatorAttachment: string;
+        userVerification: string;
+        residentKey: string;
+      };
+      timeout: number;
+      excludeCredentials: Array<{ id: string; type: string }>;
+      attestation: string;
+    }>('/auth/webauthn/register-options', {
+      method: 'POST',
+      body: JSON.stringify({
+        session_token: this.sessionToken,
+        ...(authenticatorType ? { authenticator_type: authenticatorType } : {}),
+      }),
+    });
+  }
+
+  /**
+   * Enregistrer un credential WebAuthn après création côté client
+   */
+  async registerWebAuthnCredential(
+    credentialId: string,
+    publicKey: string,
+    authenticatorType: string,
+    label: string,
+  ) {
+    const result = await this.fetch<{
+      success: boolean;
+      token: string;
+      expires_in: number;
+      credential_registered: boolean;
+      authenticator_type: string;
+      label: string;
+    }>('/auth/webauthn/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        session_token: this.sessionToken,
+        credential_id: credentialId,
+        public_key: publicKey,
+        authenticator_type: authenticatorType,
+        label,
+      }),
+    });
+
+    if (result.token) {
+      this.setToken(result.token);
+    }
+
+    return result;
+  }
+
+  /**
+   * Obtenir les options d'authentification WebAuthn (credentials existants)
+   */
+  async getWebAuthnAuthOptions() {
+    return this.fetch<{
+      has_credentials: boolean;
+      challenge: string;
+      rpId: string;
+      allowCredentials: Array<{ id: string; type: string; transports: string[] }>;
+      userVerification: string;
+      timeout: number;
+      registered_types: string[];
+    }>('/auth/webauthn/auth-options', {
+      method: 'POST',
+      body: JSON.stringify({ session_token: this.sessionToken }),
+    });
   }
 
   async logout() {
@@ -669,24 +753,23 @@ class AdminApiClient {
   // ====================================================================
 
   async getSecurityStatus() {
-    // Uses /api/security/status
-    const response = await fetch('/api/security/status', {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(this.adminToken && { Authorization: `Bearer ${this.adminToken}` }),
-      },
-    });
-    return response.json();
+    return this.fetch<{
+      status: string;
+      threats_blocked: number;
+      active_sessions: number;
+      last_scan: string;
+    }>('/security/status');
   }
 
   async getExchangesList() {
-    const response = await fetch('/api/exchanges', {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(this.adminToken && { Authorization: `Bearer ${this.adminToken}` }),
-      },
-    });
-    return response.json();
+    return this.fetch<{
+      exchanges: Array<{
+        name: string;
+        status: string;
+        pairs: number;
+        volume_24h: number;
+      }>;
+    }>('/exchanges');
   }
 }
 

@@ -131,3 +131,28 @@ function createSecurityAlertsStore() {
 }
 
 export const securityAlertsStore = createSecurityAlertsStore();
+
+// Toast notification store for admin UI feedback
+function createToastStore() {
+  const { subscribe, update } = writable<
+    Array<{
+      id: string;
+      type: 'success' | 'error' | 'info' | 'warning';
+      message: string;
+    }>
+  >([]);
+
+  return {
+    subscribe,
+    add: (type: 'success' | 'error' | 'info' | 'warning', message: string) => {
+      const id = crypto.randomUUID();
+      update((toasts) => [...toasts, { id, type, message }]);
+      setTimeout(() => {
+        update((toasts) => toasts.filter((t) => t.id !== id));
+      }, 5000);
+    },
+    remove: (id: string) => update((toasts) => toasts.filter((t) => t.id !== id)),
+  };
+}
+
+export const toastStore = createToastStore();

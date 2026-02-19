@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { BottomNav, Header, Sidebar } from '$lib/components/layout';
+  import Toast from '$lib/components/ui/Toast.svelte';
   import { authStore } from '$lib/stores';
   import type { Snippet } from 'svelte';
   import { onMount } from 'svelte';
@@ -71,6 +72,9 @@
 
     <!-- Bottom Navigation (mobile) -->
     <BottomNav />
+
+    <!-- Toast Notifications -->
+    <Toast />
   </div>
 {:else}
   {@render children?.()}

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { adminApi } from '$lib/api/client';
   import { Button } from '$lib/components/ui';
+  import { toastStore } from '$lib/stores/auth';
   import { formatRelativeTime } from '$lib/utils';
   import {
     AlertTriangle,
@@ -43,6 +44,8 @@
   });
 
   let auditLogs = $state<AuditLog[]>([]);
+  let currentPage = $state(1);
+  let selectedLog = $state<AuditLog | null>(null);
 
   async function loadData() {
     loading = true;
@@ -94,6 +97,7 @@
       stats.lastScan = new Date();
     } catch (error) {
       console.error('Failed to load audit logs:', error);
+      toastStore.add('error', 'Failed to load audit logs');
     } finally {
       loading = false;
     }
@@ -102,6 +106,50 @@
   onMount(() => {
     loadData();
   });
+
+  function handleExport() {
+    if (filteredLogs.length === 0) {
+      toastStore.add('warning', 'No logs to export');
+      return;
+    }
+    const headers = ['Timestamp', 'Type', 'Severity', 'Action', 'Actor', 'Resource', 'Details'];
+    const rows = filteredLogs.map((l) => [
+      l.timestamp.toISOString(),
+      l.type,
+      l.severity,
+      l.action,
+      l.actor,
+      l.resource,
+      l.details.replace(/"/g, '""'),
+    ]);
+    const csv = [headers.join(','), ...rows.map((r) => r.map((c) => `"${c}"`).join(','))].join(
+      '\n',
+    );
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toastStore.add('success', `Exported ${filteredLogs.length} logs`);
+  }
+
+  function viewLog(log: AuditLog) {
+    selectedLog = log;
+  }
+
+  function handleNextPage() {
+    currentPage++;
+    toastStore.add('info', `Page ${currentPage} — showing cached results`);
+  }
+
+  function handlePrevPage() {
+    if (currentPage > 1) {
+      currentPage--;
+      toastStore.add('info', `Page ${currentPage}`);
+    }
+  }
 
   const typeIcons: Record<string, typeof Shield> = {
     security: Shield,
@@ -163,7 +211,7 @@
         <RefreshCw class="h-4 w-4 {loading ? 'animate-spin' : ''}" />
         {loading ? 'Loading...' : 'Refresh'}
       </Button>
-      <Button variant="outline" size="sm">
+      <Button variant="outline" size="sm" onclick={handleExport}>
         <Download class="h-4 w-4" />
         Export
       </Button>
@@ -316,6 +364,8 @@
           </div>
           <button
             class="rounded-lg p-2 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))]"
+            onclick={() => viewLog(log)}
+            title="View details"
           >
             <Eye class="h-4 w-4" />
           </button>
@@ -333,15 +383,81 @@
     </p>
     <div class="flex gap-2">
       <button
-        class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--secondary))]/30 px-3 py-1.5 text-sm font-medium text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--secondary))]/50"
+        class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--secondary))]/30 px-3 py-1.5 text-sm font-medium text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--secondary))]/50 disabled:opacity-50"
+        onclick={handlePrevPage}
+        disabled={currentPage <= 1}
       >
         Previous
       </button>
+      <span class="px-2 py-1.5 text-sm text-[hsl(var(--muted-foreground))]">{currentPage}</span>
       <button
         class="rounded-lg bg-[hsl(var(--primary))] px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[hsl(var(--primary))]/90"
+        onclick={handleNextPage}
       >
         Next
       </button>
     </div>
   </div>
 </div>
+
+<!-- Log Detail Panel -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+{#if selectedLog}
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+    onclick={() => (selectedLog = null)}
+    role="dialog"
+    tabindex="-1"
+    onkeydown={(e) => e.key === 'Escape' && (selectedLog = null)}
+  >
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div
+      class="mx-4 w-full max-w-lg rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6 shadow-xl"
+      onclick={(e) => e.stopPropagation()}
+    >
+      <h3 class="mb-4 text-lg font-bold text-[hsl(var(--foreground))]">Log Details</h3>
+      <div class="space-y-3">
+        <div class="rounded-lg bg-[hsl(var(--secondary))]/30 p-3">
+          <p class="text-xs text-[hsl(var(--muted-foreground))]">Action</p>
+          <p class="font-medium text-[hsl(var(--foreground))]">{selectedLog.action}</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="rounded-lg bg-[hsl(var(--secondary))]/30 p-3">
+            <p class="text-xs text-[hsl(var(--muted-foreground))]">Type</p>
+            <p class="font-medium text-[hsl(var(--foreground))]">{selectedLog.type}</p>
+          </div>
+          <div class="rounded-lg bg-[hsl(var(--secondary))]/30 p-3">
+            <p class="text-xs text-[hsl(var(--muted-foreground))]">Severity</p>
+            <p class="font-medium text-[hsl(var(--foreground))]">{selectedLog.severity}</p>
+          </div>
+          <div class="rounded-lg bg-[hsl(var(--secondary))]/30 p-3">
+            <p class="text-xs text-[hsl(var(--muted-foreground))]">Actor</p>
+            <p class="font-medium text-[hsl(var(--foreground))]">{selectedLog.actor}</p>
+          </div>
+          <div class="rounded-lg bg-[hsl(var(--secondary))]/30 p-3">
+            <p class="text-xs text-[hsl(var(--muted-foreground))]">Resource</p>
+            <p class="font-medium text-[hsl(var(--foreground))]">{selectedLog.resource}</p>
+          </div>
+        </div>
+        <div class="rounded-lg bg-[hsl(var(--secondary))]/30 p-3">
+          <p class="text-xs text-[hsl(var(--muted-foreground))]">Timestamp</p>
+          <p class="font-medium text-[hsl(var(--foreground))]">
+            {selectedLog.timestamp.toLocaleString()}
+          </p>
+        </div>
+        <div class="rounded-lg bg-[hsl(var(--secondary))]/30 p-3">
+          <p class="text-xs text-[hsl(var(--muted-foreground))]">Details</p>
+          <pre
+            class="mt-1 overflow-x-auto text-xs text-[hsl(var(--foreground))]">{selectedLog.details}</pre>
+        </div>
+      </div>
+      <button
+        class="mt-4 w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--secondary))]/30 px-4 py-2.5 text-sm font-medium text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--secondary))]/50"
+        onclick={() => (selectedLog = null)}
+      >
+        Close
+      </button>
+    </div>
+  </div>
+{/if}

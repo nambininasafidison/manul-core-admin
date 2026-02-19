@@ -1,6 +1,7 @@
 <script lang="ts">
   import { adminApi } from '$lib/api/client';
   import { Button } from '$lib/components/ui';
+  import { toastStore } from '$lib/stores/auth';
   import { formatLoon, formatPercent, formatRelativeTime } from '$lib/utils';
   import {
     ArrowUpRight,
@@ -95,6 +96,7 @@
       }
     } catch (error) {
       console.error('Failed to load finance data:', error);
+      toastStore.add('error', 'Failed to load finance data');
     } finally {
       loading = false;
     }
@@ -103,6 +105,39 @@
   onMount(() => {
     loadData();
   });
+
+  function handleExportReport() {
+    const report = [
+      'MANUL CORE FINANCE REPORT',
+      `Generated: ${new Date().toISOString()}`,
+      '',
+      'SYSTEM STATS',
+      `Total Circulation: ${systemStats.totalCirculation}`,
+      `Daily Volume: ${systemStats.dailyVolume}`,
+      `Today Profit: ${systemStats.totalProfitToday}`,
+      `Average ROI: ${systemStats.averageROI}`,
+      `Active Capital: ${systemStats.activeCapital}`,
+      '',
+      'PROFIT DISTRIBUTION',
+      `Users (70%): ${profitDistribution.userAmount}`,
+      `Enterprise (20%): ${profitDistribution.enterpriseAmount}`,
+      `Bot Maintenance (10%): ${profitDistribution.botAmount}`,
+      '',
+      'RECENT TRANSACTIONS',
+      'Type,User,Bot,Amount,Timestamp',
+      ...recentTransactions.map(
+        (t) => `${t.type},${t.user},${t.bot || '-'},${t.amount},${t.timestamp.toISOString()}`,
+      ),
+    ].join('\n');
+    const blob = new Blob([report], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `finance-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toastStore.add('success', 'Finance report exported');
+  }
 
   const typeColors: Record<string, { bg: string; text: string }> = {
     profit: { bg: 'bg-[hsl(var(--success))]/20', text: 'text-[hsl(var(--success))]' },
@@ -135,7 +170,7 @@
         <RefreshCw class="h-4 w-4 {loading ? 'animate-spin' : ''}" />
         {loading ? 'Loading...' : 'Refresh'}
       </Button>
-      <Button variant="outline" size="sm">Export Report</Button>
+      <Button variant="outline" size="sm" onclick={handleExportReport}>Export Report</Button>
     </div>
   </div>
 
