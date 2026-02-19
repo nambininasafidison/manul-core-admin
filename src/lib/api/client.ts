@@ -130,16 +130,25 @@ class AdminApiClient {
     };
   }
 
-  async verifyHardwareKey(credentialId: string, response: string) {
+  async verifyHardwareKey(
+    credentialId: string,
+    response: string,
+    authenticatorData?: string,
+    signature?: string,
+  ) {
+    const body: Record<string, string | undefined> = {
+      credential_id: credentialId,
+      response,
+      session_token: this.sessionToken,
+    };
+    if (authenticatorData) body.authenticator_data = authenticatorData;
+    if (signature) body.signature = signature;
+
     const result = await this.fetch<{ success: boolean; token: string; expires_in: number }>(
       '/auth/hardware-key/verify',
       {
         method: 'POST',
-        body: JSON.stringify({
-          credential_id: credentialId,
-          response,
-          session_token: this.sessionToken,
-        }),
+        body: JSON.stringify(body),
       },
     );
 

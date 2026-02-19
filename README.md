@@ -49,18 +49,23 @@ Enregistré une fois au premier login, réutilisé aux connexions suivantes.
 
 ## Pages
 
-| Route        | Description                             | Fonctionnalités             |
-| ------------ | --------------------------------------- | --------------------------- |
-| `/login`     | Authentification triple facteur         | Credentials → TOTP → HW Key |
-| `/dashboard` | Vue d'ensemble, métriques temps réel    | Stats live, uptime, bots    |
-| `/bots`      | Liste complète des bots                 | Filtres, export CSV         |
-| `/users`     | Liste des utilisateurs                  | Filtres, export CSV         |
-| `/rentals`   | Contrats de location actifs             | Stats, export CSV           |
-| `/finance`   | Revenus, transactions, résumé financier | Export rapport CSV          |
-| `/security`  | Alertes sécurité, menaces, sessions     | Status temps réel           |
-| `/audit`     | Logs système et événements de sécurité  | Pagination, export CSV      |
-| `/database`  | Statistiques base de données            | Pool, tables, backups       |
-| `/settings`  | Configuration système (lecture seule)   | Paramètres actuels          |
+| Route          | Description                             | Fonctionnalités                         |
+| -------------- | --------------------------------------- | --------------------------------------- |
+| `/login`       | Authentification triple facteur         | Credentials → TOTP → HW Key             |
+| `/dashboard`   | Vue d'ensemble, métriques temps réel    | Stats live, uptime, bots, SupremeMother |
+| `/bots`        | Liste complète des bots                 | Filtres, export CSV                     |
+| `/users`       | Liste des utilisateurs                  | Filtres, export CSV                     |
+| `/allocations` | Allocations de capital et stratégies    | Répartition, historique                 |
+| `/rentals`     | Contrats de location actifs             | Stats, export CSV                       |
+| `/finance`     | Revenus, transactions, résumé financier | Export rapport CSV                      |
+| `/security`    | Alertes sécurité, menaces, sessions     | Status temps réel                       |
+| `/audit`       | Logs système et événements de sécurité  | Pagination, export CSV                  |
+| `/database`    | Statistiques base de données            | Pool, tables, backups                   |
+| `/settings`    | Configuration système (lecture seule)   | Paramètres actuels                      |
+
+> **SupremeMother** : Le dashboard affiche l'état de la SupremeMother (observation passive, signaux de sagesse, influence émise).
+> Ces données sont visibles **uniquement par l'admin/créateur**, jamais exposées aux utilisateurs réguliers.
+> La SupremeMother observe les bots, apprend de leurs résultats et émet des signaux d'influence — les bots conservent leur **libre arbitre**.
 
 ## Structure du projet
 
@@ -78,17 +83,20 @@ src/
 │   ├── security/              # Device fingerprint, lockout, security events
 │   └── config/                # API base URL, env config
 ├── routes/
-│   ├── +layout.svelte         # Layout principal avec Sidebar + Toast
+│   ├── +page.svelte           # Redirect → /login
 │   ├── login/+page.svelte     # Page login triple auth
-│   ├── dashboard/+page.svelte
-│   ├── bots/+page.svelte
-│   ├── users/+page.svelte
-│   ├── rentals/+page.svelte
-│   ├── finance/+page.svelte
-│   ├── security/+page.svelte
-│   ├── audit/+page.svelte
-│   ├── database/+page.svelte
-│   └── settings/+page.svelte
+│   └── (admin)/               # Route group (layout protégé)
+│       ├── +layout.svelte     # Layout principal avec Sidebar + Toast
+│       ├── dashboard/+page.svelte
+│       ├── bots/+page.svelte
+│       ├── users/+page.svelte
+│       ├── allocations/+page.svelte
+│       ├── rentals/+page.svelte
+│       ├── finance/+page.svelte
+│       ├── security/+page.svelte
+│       ├── audit/+page.svelte
+│       ├── database/+page.svelte
+│       └── settings/+page.svelte
 └── hooks.server.ts            # Proxy API (injection X-Admin-Secret)
 ```
 
@@ -118,8 +126,9 @@ docker run -p 3001:3000 manulcore-admin
 
 ```bash
 # Configuration API
-PUBLIC_API_URL=https://api.manulcore.io     # URL du backend
-ADMIN_SECRET=your_admin_secret              # Injecté par le proxy serveur SvelteKit
+PUBLIC_API_URL=https://api.manulcore.io     # URL du backend REST
+PUBLIC_WS_URL=wss://api.manulcore.io/ws     # URL du backend WebSocket
+ADMIN_SECRET=your_admin_secret              # Injecté par le proxy serveur SvelteKit (X-Admin-Secret)
 ```
 
 ## Système de notifications

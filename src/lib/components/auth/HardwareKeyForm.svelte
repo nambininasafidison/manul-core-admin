@@ -228,9 +228,25 @@
         .replace(/\//g, '_')
         .replace(/=/g, '');
 
-      // Format: "passkey:<credential_id>:<clientDataB64>"
-      // Le login page extrait le credential_id et envoie via verifyHardwareKey
-      await onVerify(`passkey:${credentialId}:${clientDataB64}`);
+      // Extraire authenticatorData en base64url (pour vérification signature)
+      const authenticatorDataB64 = btoa(
+        String.fromCharCode(...new Uint8Array(authResponse.authenticatorData)),
+      )
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+
+      // Extraire la signature en base64url (ASN.1 DER format)
+      const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(authResponse.signature)))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+
+      // Format: "passkey:<credential_id>:<clientDataB64>:<authenticatorDataB64>:<signatureB64>"
+      // Le login page extrait tous les champs et envoie via verifyHardwareKey
+      await onVerify(
+        `passkey:${credentialId}:${clientDataB64}:${authenticatorDataB64}:${signatureB64}`,
+      );
     } catch (e) {
       console.error('Passkey auth error:', e);
       if (e instanceof Error && e.name === 'NotAllowedError') {

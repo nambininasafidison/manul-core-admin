@@ -155,11 +155,19 @@
         // L'enregistrement a déjà authentifié — le token est déjà posé
         result = { verified: true, token: adminApi.getToken(), expiresIn: 3600 };
       } else if (response.startsWith('passkey:')) {
-        // Format: "passkey:<credential_id>:<clientDataB64>"
+        // Format: "passkey:<credential_id>:<clientDataB64>:<authenticatorDataB64>:<signatureB64>"
         const parts = response.split(':');
         const credentialId = parts[1] || '';
-        const webauthnResponse = `webauthn:${parts.slice(2).join(':')}`;
-        result = await adminApi.verifyHardwareKey(credentialId, webauthnResponse);
+        const clientDataB64 = parts[2] || '';
+        const authenticatorDataB64 = parts[3] || undefined;
+        const signatureB64 = parts[4] || undefined;
+        const webauthnResponse = `webauthn:${clientDataB64}`;
+        result = await adminApi.verifyHardwareKey(
+          credentialId,
+          webauthnResponse,
+          authenticatorDataB64,
+          signatureB64,
+        );
       } else {
         // Vérification classique (backup code)
         const credentialId = response.startsWith('backup:') ? 'backup' : 'credential-id';
