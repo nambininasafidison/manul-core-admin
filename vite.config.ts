@@ -11,6 +11,15 @@ export default defineConfig({
         target: process.env.PUBLIC_API_URL || 'http://localhost:8080',
         changeOrigin: true,
       },
+      '/graphql': {
+        target: process.env.PUBLIC_API_URL || 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: process.env.PUBLIC_API_URL || 'http://localhost:8080',
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
 });

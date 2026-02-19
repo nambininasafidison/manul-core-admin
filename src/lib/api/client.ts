@@ -669,8 +669,8 @@ class AdminApiClient {
   // ====================================================================
 
   async getSecurityStatus() {
-    // Uses /api/v1/security/status
-    const response = await fetch('/api/v1/security/status', {
+    // Uses /api/security/status
+    const response = await fetch('/api/security/status', {
       headers: {
         'Content-Type': 'application/json',
         ...(this.adminToken && { Authorization: `Bearer ${this.adminToken}` }),
@@ -680,7 +680,7 @@ class AdminApiClient {
   }
 
   async getExchangesList() {
-    const response = await fetch('/api/v1/exchanges', {
+    const response = await fetch('/api/exchanges', {
       headers: {
         'Content-Type': 'application/json',
         ...(this.adminToken && { Authorization: `Bearer ${this.adminToken}` }),
