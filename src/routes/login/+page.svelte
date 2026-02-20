@@ -295,16 +295,5 @@
         </div>
       </div>
     </div>
-
-    <!-- Info Setup -->
-    <div class="mt-4 rounded-lg bg-[hsl(var(--primary))]/10 p-4 text-center">
-      <p class="text-xs text-[hsl(var(--muted-foreground))]">
-        <span class="font-medium text-[hsl(var(--primary))]">Setup :</span>
-        Identifiants affichés dans les logs au premier démarrage du backend.
-        <br />
-        Étape 1 : Username généré + mot de passe | Étape 2 : Code TOTP (app authenticator) | Étape 3
-        : Empreinte ou clé de sécurité
-      </p>
-    </div>
   </div>
 </div>
