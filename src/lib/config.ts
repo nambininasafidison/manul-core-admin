@@ -4,17 +4,17 @@
  * Seules les variables qui changent par déploiement sont dans .env.
  * Les valeurs fixes sont des constantes ici.
  */
-import { PUBLIC_API_URL, PUBLIC_WS_URL } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 
 export const config = {
   /** URL absolue du backend Rust */
-  apiUrl: PUBLIC_API_URL || 'http://localhost:8080',
+  apiUrl: env.PUBLIC_API_URL || 'http://localhost:8080',
 
   /** Chemin relatif de l'API admin (ne change jamais) */
   apiBase: '/api/admin',
 
   /** URL WebSocket pour les mises à jour temps réel */
-  wsUrl: PUBLIC_WS_URL || 'ws://localhost:8080/ws',
+  wsUrl: env.PUBLIC_WS_URL || 'ws://localhost:8080/ws',
 
   // ---- Valeurs fixes (modifier le code pour changer) ----
 
