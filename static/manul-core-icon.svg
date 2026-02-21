@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background gradient: green top-left to orange bottom-right -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5CB85C"/>
+      <stop offset="35%" stop-color="#8BB844"/>
+      <stop offset="65%" stop-color="#C4A832"/>
+      <stop offset="100%" stop-color="#E8912A"/>
+    </linearGradient>
+    <!-- Cat face gradient -->
+    <radialGradient id="faceGrad" cx="50%" cy="38%" r="52%">
+      <stop offset="0%" stop-color="#FFD54F"/>
+      <stop offset="55%" stop-color="#FFBF30"/>
+      <stop offset="100%" stop-color="#F0A020"/>
+    </radialGradient>
+    <!-- Ear gradient -->
+    <radialGradient id="earGrad" cx="50%" cy="60%" r="55%">
+      <stop offset="0%" stop-color="#FFD54F"/>
+      <stop offset="100%" stop-color="#F0A020"/>
+    </radialGradient>
+    <!-- Inner ear pink -->
+    <radialGradient id="innerEarGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFB8A8"/>
+      <stop offset="100%" stop-color="#F09080"/>
+    </radialGradient>
+    <!-- Face shadow -->
+    <filter id="faceShadow" x="-10%" y="-5%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="5" stdDeviation="10" flood-color="#00000025"/>
+    </filter>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect x="0" y="0" width="512" height="512" rx="110" ry="110" fill="url(#bgGrad)"/>
+
+  <!-- Left ear -->
+  <path d="M 130 230 Q 140 120 175 90 Q 200 130 240 195 Z" fill="url(#earGrad)"/>
+  <path d="M 148 218 Q 155 140 180 115 Q 198 145 228 198 Z" fill="url(#innerEarGrad)" opacity="0.65"/>
+
+  <!-- Right ear -->
+  <path d="M 382 230 Q 372 120 337 90 Q 312 130 272 195 Z" fill="url(#earGrad)"/>
+  <path d="M 364 218 Q 357 140 332 115 Q 314 145 284 198 Z" fill="url(#innerEarGrad)" opacity="0.65"/>
+
+  <!-- Main face - round like emoji -->
+  <ellipse cx="256" cy="305" rx="155" ry="145" fill="url(#faceGrad)" filter="url(#faceShadow)"/>
+
+  <!-- Forehead stripes (subtle manul markings) -->
+  <path d="M 228 200 Q 232 218 236 235" fill="none" stroke="#E09018" stroke-width="5" stroke-linecap="round" opacity="0.4"/>
+  <path d="M 256 192 Q 256 212 256 232" fill="none" stroke="#E09018" stroke-width="5" stroke-linecap="round" opacity="0.45"/>
+  <path d="M 284 200 Q 280 218 276 235" fill="none" stroke="#E09018" stroke-width="5" stroke-linecap="round" opacity="0.4"/>
+
+  <!-- Left eye - big round emoji style -->
+  <ellipse cx="205" cy="290" rx="24" ry="26" fill="#1E1E1E"/>
+  <ellipse cx="213" cy="281" rx="9" ry="10" fill="#FFFFFF" opacity="0.9"/>
+  <ellipse cx="200" cy="296" rx="4" ry="4" fill="#FFFFFF" opacity="0.45"/>
+
+  <!-- Right eye - big round emoji style -->
+  <ellipse cx="307" cy="290" rx="24" ry="26" fill="#1E1E1E"/>
+  <ellipse cx="315" cy="281" rx="9" ry="10" fill="#FFFFFF" opacity="0.9"/>
+  <ellipse cx="302" cy="296" rx="4" ry="4" fill="#FFFFFF" opacity="0.45"/>
+
+  <!-- Nose - small triangle/oval like emoji -->
+  <ellipse cx="256" cy="335" rx="12" ry="9" fill="#1E1E1E"/>
+  <ellipse cx="256" cy="333" rx="8" ry="5" fill="#333" opacity="0.35"/>
+
+  <!-- Mouth - cute smile -->
+  <path d="M 256 344 Q 240 366 224 356" fill="none" stroke="#1E1E1E" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M 256 344 Q 272 366 288 356" fill="none" stroke="#1E1E1E" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- Left whiskers - grey like real manul -->
+  <line x1="95" y1="298" x2="170" y2="315" stroke="#A0A0A0" stroke-width="2.8" stroke-linecap="round" opacity="0.6"/>
+  <line x1="90" y1="325" x2="168" y2="332" stroke="#A0A0A0" stroke-width="2.8" stroke-linecap="round" opacity="0.6"/>
+  <line x1="98" y1="352" x2="172" y2="347" stroke="#A0A0A0" stroke-width="2.8" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- Right whiskers -->
+  <line x1="417" y1="298" x2="342" y2="315" stroke="#A0A0A0" stroke-width="2.8" stroke-linecap="round" opacity="0.6"/>
+  <line x1="422" y1="325" x2="344" y2="332" stroke="#A0A0A0" stroke-width="2.8" stroke-linecap="round" opacity="0.6"/>
+  <line x1="414" y1="352" x2="340" y2="347" stroke="#A0A0A0" stroke-width="2.8" stroke-linecap="round" opacity="0.6"/>
+</svg>

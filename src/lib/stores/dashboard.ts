@@ -88,20 +88,8 @@ function createDashboardStore() {
           loading: false,
         }));
       } catch (error) {
-        // Fallback to mock data if backend unavailable
         update((s) => ({
           ...s,
-          systemStats: {
-            totalBots: 1247,
-            activeBots: 892,
-            totalUsers: 15483,
-            activeRentals: 3421,
-            totalCapital: 2847392.45,
-            totalProfit: 487293.12,
-            uptimeSeconds: 2592000,
-            cpuUsage: 34,
-            memoryUsage: 52,
-          },
           loading: false,
           error: error instanceof Error ? error.message : 'Failed to load stats',
         }));
@@ -123,17 +111,9 @@ function createDashboardStore() {
           },
         }));
       } catch (error) {
-        // Fallback to mock data
         update((s) => ({
           ...s,
-          motherSupreme: {
-            capital: 892341.67,
-            childrenCount: 1247,
-            generationMax: 8,
-            compoundRate: 0.4,
-            lastActivity: new Date().toISOString(),
-            canSpawn: true,
-          },
+          error: error instanceof Error ? error.message : 'Failed to load mother status',
         }));
       }
     },
@@ -158,7 +138,7 @@ function createDashboardStore() {
         }));
         update((s) => ({ ...s, recentActivity: activities }));
       } catch {
-        // Keep existing mock data
+        // Retain previously loaded data on transient failure
       }
     },
 
@@ -174,7 +154,7 @@ function createDashboardStore() {
           }));
         update((s) => ({ ...s, alerts }));
       } catch {
-        // Keep existing mock data
+        // Retain previously loaded data on transient failure
       }
     },
 

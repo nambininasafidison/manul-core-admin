@@ -237,11 +237,7 @@
   <div class="w-full max-w-md">
     <!-- Header -->
     <div class="mb-8 text-center">
-      <div
-        class="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-linear-to-br from-[hsl(var(--primary))] to-[hsl(var(--accent))]"
-      >
-        <span class="text-5xl">🐱</span>
-      </div>
+      <img src="/manul.png" alt="Manul Core" class="mx-auto mb-4 h-20 w-20 rounded-2xl" />
       <h1 class="text-2xl font-bold text-[hsl(var(--foreground))]">Manul Core Admin</h1>
       <p class="mt-1 text-sm text-[hsl(var(--muted-foreground))]">Secure Administration Portal</p>
     </div>

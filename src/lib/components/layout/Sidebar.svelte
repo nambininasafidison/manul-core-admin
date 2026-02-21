@@ -69,11 +69,7 @@
       class="flex h-16 items-center justify-between gap-3 border-b border-[hsl(var(--border))] px-4"
     >
       <div class="flex items-center gap-3">
-        <div
-          class="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-[hsl(var(--primary))] to-[hsl(var(--accent))]"
-        >
-          <span class="text-2xl">🐱</span>
-        </div>
+        <img src="/manul.png" alt="Manul" class="h-10 w-10 rounded-xl" />
         <div>
           <h1 class="font-bold text-[hsl(var(--foreground))]">Manul Admin</h1>
           <p class="text-xs text-[hsl(var(--muted-foreground))]">Creator Dashboard</p>
