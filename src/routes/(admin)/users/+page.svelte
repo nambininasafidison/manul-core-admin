@@ -3,18 +3,7 @@
   import { Button, Modal } from '$lib/components/ui';
   import { toastStore } from '$lib/stores/auth';
   import { formatLoon, formatNumber, formatRelativeTime } from '$lib/utils';
-  import {
-    Ban,
-    Check,
-    Crown,
-    Edit,
-    Eye,
-    RefreshCw,
-    Search,
-    User,
-    Users,
-    Wallet,
-  } from 'lucide-svelte';
+  import { Ban, Crown, RefreshCw, Search, User, Users, Wallet } from 'lucide-svelte';
   import { onMount } from 'svelte';
 
   // Types
@@ -129,14 +118,6 @@
     a.click();
     URL.revokeObjectURL(url);
     toastStore.add('success', `Exported ${filteredUsers.length} users`);
-  }
-
-  function handleEditUser() {
-    toastStore.add('warning', 'User editing disabled in read-only admin mode');
-  }
-
-  function handleBanUser(username: string) {
-    toastStore.add('warning', `Ban/unban for ${username} disabled in read-only admin mode`);
   }
 
   const filteredUsers = $derived(
@@ -361,33 +342,7 @@
             </td>
             <td>
               <div class="flex items-center gap-1">
-                <button
-                  class="rounded-lg p-2 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))]"
-                  onclick={() => viewUser(user)}
-                >
-                  <Eye class="h-4 w-4" />
-                </button>
-                <button
-                  class="rounded-lg p-2 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))]"
-                  onclick={handleEditUser}
-                >
-                  <Edit class="h-4 w-4" />
-                </button>
-                {#if user.status === 'banned'}
-                  <button
-                    class="rounded-lg p-2 text-[hsl(var(--success))] transition-colors hover:bg-[hsl(var(--success))]/20"
-                    onclick={() => handleBanUser(user.username)}
-                  >
-                    <Check class="h-4 w-4" />
-                  </button>
-                {:else}
-                  <button
-                    class="rounded-lg p-2 text-[hsl(var(--destructive))] transition-colors hover:bg-[hsl(var(--destructive))]/20"
-                    onclick={() => handleBanUser(user.username)}
-                  >
-                    <Ban class="h-4 w-4" />
-                  </button>
-                {/if}
+                <Button variant="outline" size="sm" onclick={() => viewUser(user)}>View</Button>
               </div>
             </td>
           </tr>
@@ -477,23 +432,6 @@
         >
           Close
         </button>
-        {#if selectedUser.status === 'banned'}
-          <button
-            class="flex-1 rounded-lg bg-[hsl(var(--success))] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[hsl(var(--success))]/90"
-            onclick={() => handleBanUser(selectedUser?.username || '')}
-          >
-            <Check class="mr-2 inline h-4 w-4" />
-            Unban User
-          </button>
-        {:else}
-          <button
-            class="flex-1 rounded-lg bg-[hsl(var(--destructive))] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[hsl(var(--destructive))]/90"
-            onclick={() => handleBanUser(selectedUser?.username || '')}
-          >
-            <Ban class="mr-2 inline h-4 w-4" />
-            Ban User
-          </button>
-        {/if}
       </div>
     </div>
   {/if}

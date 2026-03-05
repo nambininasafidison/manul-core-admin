@@ -2,38 +2,11 @@
   import { adminApi } from '$lib/api/client';
   import { Button } from '$lib/components/ui';
   import { toastStore } from '$lib/stores/auth';
-  import {
-    Bell,
-    Key,
-    Lock,
-    Mail,
-    Moon,
-    RefreshCw,
-    Save,
-    Server,
-    Settings,
-    Shield,
-    Webhook,
-  } from 'lucide-svelte';
+  import { RefreshCw, Server, Settings } from 'lucide-svelte';
   import { onMount } from 'svelte';
 
-  // States
   let loading = $state(true);
-  let activeTab = $state('general');
-  let siteName = $state('Manul Core');
-  let siteUrl = $state('https://manul.io');
-  let supportEmail = $state('support@manul.io');
-  let timezone = $state('UTC');
-  let apiRateLimit = $state('100');
-  let webhookUrl = $state('');
-  let isDarkMode = $state(true);
-  let emailNotifications = $state(true);
-  let pushNotifications = $state(true);
-  let twoFactorEnabled = $state(true);
-  let autoBackup = $state(true);
-  let maintenanceMode = $state(false);
 
-  // System config from backend
   let systemConfig = $state({
     max_population: 0,
     spawn_threshold: 0,
@@ -59,81 +32,33 @@
     loadData();
   });
 
-  function handleRegenerateKey() {
-    toastStore.add(
-      'warning',
-      'API key regeneration disabled in read-only admin mode. Contact DevOps.',
-    );
-  }
-
-  function handleClearCache() {
-    toastStore.add(
-      'info',
-      'Cache clearing disabled in read-only admin mode. Cache is managed automatically.',
-    );
-  }
-
-  function handleResetDatabase() {
-    toastStore.add(
-      'error',
-      'Database reset is disabled in read-only admin mode. This requires direct server access.',
-    );
-  }
-
-  function handleToggleDarkMode() {
-    isDarkMode = !isDarkMode;
-    toastStore.add('info', `Dark mode ${isDarkMode ? 'enabled' : 'disabled'} (local only)`);
-  }
-
-  function handleToggleEmail() {
-    emailNotifications = !emailNotifications;
-    toastStore.add(
-      'info',
-      `Email notifications ${emailNotifications ? 'enabled' : 'disabled'} (local only)`,
-    );
-  }
-
-  function handleTogglePush() {
-    pushNotifications = !pushNotifications;
-    toastStore.add(
-      'info',
-      `Push notifications ${pushNotifications ? 'enabled' : 'disabled'} (local only)`,
-    );
-  }
-
-  function handleToggle2FA() {
-    twoFactorEnabled = !twoFactorEnabled;
-    toastStore.add(
-      'warning',
-      '2FA toggle is a display-only setting. Actual 2FA is always enforced.',
-    );
-    twoFactorEnabled = true;
-  }
-
-  function handleToggleAutoBackup() {
-    autoBackup = !autoBackup;
-    toastStore.add(
-      'info',
-      `Auto backup display ${autoBackup ? 'enabled' : 'disabled'} (actual backups are always active)`,
-    );
-  }
-
-  function handleToggleMaintenance() {
-    maintenanceMode = !maintenanceMode;
-    toastStore.add(
-      'warning',
-      'Maintenance mode toggle disabled in read-only admin. Use deployment config.',
-    );
-    maintenanceMode = false;
-  }
-
-  const tabs = [
-    { id: 'general', label: 'General', icon: Settings },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'security', label: 'Security', icon: Shield },
-    { id: 'api', label: 'API & Webhooks', icon: Webhook },
-    { id: 'system', label: 'System', icon: Server },
-  ];
+  const configItems = $derived([
+    {
+      label: 'Max Population',
+      value: systemConfig.max_population,
+      description: 'Maximum number of bots in the population',
+    },
+    {
+      label: 'Spawn Threshold',
+      value: systemConfig.spawn_threshold,
+      description: 'Performance threshold for spawning new bots',
+    },
+    {
+      label: 'Child Capital Share',
+      value: `${(systemConfig.child_capital_share * 100).toFixed(1)}%`,
+      description: 'Percentage of capital allocated to child bots',
+    },
+    {
+      label: 'Mutation Rate',
+      value: `${(systemConfig.mutation_rate * 100).toFixed(1)}%`,
+      description: 'Rate of genetic mutation during evolution',
+    },
+    {
+      label: 'Spawn Cooldown',
+      value: `${systemConfig.spawn_cooldown_secs}s`,
+      description: 'Cooldown period between spawn events',
+    },
+  ]);
 </script>
 
 <svelte:head>
@@ -145,395 +70,62 @@
   <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     <div>
       <h1 class="text-2xl font-bold text-[hsl(var(--foreground))]">Settings</h1>
-      <p class="text-[hsl(var(--muted-foreground))]">Configure system preferences and options</p>
+      <p class="text-[hsl(var(--muted-foreground))]">System configuration (read-only)</p>
     </div>
-    <Button variant="default" size="sm" disabled>
-      <Save class="h-4 w-4" />
-      Config Immutable
+    <Button variant="outline" size="sm" onclick={loadData} disabled={loading}>
+      <RefreshCw class="h-4 w-4 {loading ? 'animate-spin' : ''}" />
+      {loading ? 'Loading...' : 'Refresh'}
     </Button>
   </div>
 
-  <!-- Tab Navigation -->
-  <div class="flex flex-wrap gap-2 border-b border-[hsl(var(--border))] pb-4">
-    {#each tabs as tab}
-      {@const Icon = tab.icon}
-      <button
-        class="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors {activeTab ===
-        tab.id
-          ? 'bg-[hsl(var(--primary))] text-white'
-          : 'bg-[hsl(var(--secondary))]/30 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))]/50 hover:text-[hsl(var(--foreground))]'}"
-        onclick={() => (activeTab = tab.id)}
+  <!-- System Configuration -->
+  <div class="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6">
+    <div class="mb-6 flex items-center gap-3">
+      <div
+        class="flex h-11 w-11 items-center justify-center rounded-xl bg-[hsl(var(--primary))]/20"
       >
-        <Icon class="h-4 w-4" />
-        {tab.label}
-      </button>
-    {/each}
+        <Settings class="h-5 w-5 text-[hsl(var(--primary))]" />
+      </div>
+      <div>
+        <h2 class="text-lg font-semibold text-[hsl(var(--foreground))]">
+          Evolution Engine Configuration
+        </h2>
+        <p class="text-sm text-[hsl(var(--muted-foreground))]">
+          These values are managed via the deployment configuration
+        </p>
+      </div>
+    </div>
+
+    {#if loading}
+      <div class="flex items-center justify-center py-12">
+        <RefreshCw class="h-6 w-6 animate-spin text-[hsl(var(--muted-foreground))]" />
+      </div>
+    {:else}
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {#each configItems as item}
+          <div class="rounded-lg bg-[hsl(var(--secondary))]/30 p-4">
+            <p class="text-sm text-[hsl(var(--muted-foreground))]">{item.label}</p>
+            <p class="mt-1 text-2xl font-bold text-[hsl(var(--foreground))]">{item.value}</p>
+            <p class="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{item.description}</p>
+          </div>
+        {/each}
+      </div>
+    {/if}
   </div>
 
-  <!-- Tab Content -->
-  {#if activeTab === 'general'}
-    <div class="space-y-6">
-      <div class="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6">
-        <h3 class="mb-4 text-lg font-semibold text-[hsl(var(--foreground))]">General Settings</h3>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label
-              for="siteName"
-              class="mb-2 block text-sm font-medium text-[hsl(var(--foreground))]">Site Name</label
-            >
-            <input
-              id="siteName"
-              type="text"
-              bind:value={siteName}
-              class="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:border-[hsl(var(--primary))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--primary))]"
-            />
-          </div>
-          <div>
-            <label
-              for="siteUrl"
-              class="mb-2 block text-sm font-medium text-[hsl(var(--foreground))]">Site URL</label
-            >
-            <input
-              id="siteUrl"
-              type="text"
-              bind:value={siteUrl}
-              class="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:border-[hsl(var(--primary))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--primary))]"
-            />
-          </div>
-          <div>
-            <label
-              for="supportEmail"
-              class="mb-2 block text-sm font-medium text-[hsl(var(--foreground))]"
-              >Support Email</label
-            >
-            <input
-              id="supportEmail"
-              type="email"
-              bind:value={supportEmail}
-              class="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:border-[hsl(var(--primary))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--primary))]"
-            />
-          </div>
-          <div>
-            <label
-              for="timezone"
-              class="mb-2 block text-sm font-medium text-[hsl(var(--foreground))]">Timezone</label
-            >
-            <select
-              id="timezone"
-              bind:value={timezone}
-              class="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 py-2.5 text-sm text-[hsl(var(--foreground))] focus:border-[hsl(var(--primary))] focus:outline-none"
-            >
-              <option value="UTC">UTC</option>
-              <option value="America/New_York">America/New_York</option>
-              <option value="Europe/Paris">Europe/Paris</option>
-              <option value="Asia/Tokyo">Asia/Tokyo</option>
-            </select>
-          </div>
-        </div>
+  <!-- Info Banner -->
+  <div class="rounded-xl border border-[hsl(var(--info))]/30 bg-[hsl(var(--info))]/10 p-4">
+    <div class="flex items-center gap-3">
+      <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--info))]/20">
+        <Server class="h-5 w-5 text-[hsl(var(--info))]" />
       </div>
-
-      <div class="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6">
-        <h3 class="mb-4 text-lg font-semibold text-[hsl(var(--foreground))]">Appearance</h3>
-        <div class="flex items-center justify-between rounded-lg bg-[hsl(var(--secondary))]/30 p-4">
-          <div class="flex items-center gap-3">
-            <div
-              class="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--primary))]/20"
-            >
-              <Moon class="h-5 w-5 text-[hsl(var(--primary))]" />
-            </div>
-            <div>
-              <p class="font-medium text-[hsl(var(--foreground))]">Dark Mode</p>
-              <p class="text-sm text-[hsl(var(--muted-foreground))]">
-                Use dark theme across the application
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={isDarkMode}
-            aria-label="Toggle dark mode"
-            class="relative h-6 w-11 rounded-full transition-colors {isDarkMode
-              ? 'bg-[hsl(var(--primary))]'
-              : 'bg-[hsl(var(--secondary))]'}"
-            onclick={handleToggleDarkMode}
-          >
-            <span
-              class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform {isDarkMode
-                ? 'translate-x-5'
-                : ''}"
-            ></span>
-          </button>
-        </div>
-      </div>
-    </div>
-  {:else if activeTab === 'notifications'}
-    <div class="space-y-4">
-      <div class="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6">
-        <h3 class="mb-4 text-lg font-semibold text-[hsl(var(--foreground))]">
-          Notification Preferences
-        </h3>
-        <div class="space-y-4">
-          <div
-            class="flex items-center justify-between rounded-lg bg-[hsl(var(--secondary))]/30 p-4"
-          >
-            <div class="flex items-center gap-3">
-              <div
-                class="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--info))]/20"
-              >
-                <Mail class="h-5 w-5 text-[hsl(var(--info))]" />
-              </div>
-              <div>
-                <p class="font-medium text-[hsl(var(--foreground))]">Email Notifications</p>
-                <p class="text-sm text-[hsl(var(--muted-foreground))]">
-                  Receive email alerts for important events
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={emailNotifications}
-              aria-label="Toggle email notifications"
-              class="relative h-6 w-11 rounded-full transition-colors {emailNotifications
-                ? 'bg-[hsl(var(--primary))]'
-                : 'bg-[hsl(var(--secondary))]'}"
-              onclick={handleToggleEmail}
-            >
-              <span
-                class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform {emailNotifications
-                  ? 'translate-x-5'
-                  : ''}"
-              ></span>
-            </button>
-          </div>
-          <div
-            class="flex items-center justify-between rounded-lg bg-[hsl(var(--secondary))]/30 p-4"
-          >
-            <div class="flex items-center gap-3">
-              <div
-                class="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--warning))]/20"
-              >
-                <Bell class="h-5 w-5 text-[hsl(var(--warning))]" />
-              </div>
-              <div>
-                <p class="font-medium text-[hsl(var(--foreground))]">Push Notifications</p>
-                <p class="text-sm text-[hsl(var(--muted-foreground))]">
-                  Get browser push notifications
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={pushNotifications}
-              aria-label="Toggle push notifications"
-              class="relative h-6 w-11 rounded-full transition-colors {pushNotifications
-                ? 'bg-[hsl(var(--primary))]'
-                : 'bg-[hsl(var(--secondary))]'}"
-              onclick={handleTogglePush}
-            >
-              <span
-                class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform {pushNotifications
-                  ? 'translate-x-5'
-                  : ''}"
-              ></span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  {:else if activeTab === 'security'}
-    <div class="space-y-4">
-      <div class="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6">
-        <h3 class="mb-4 text-lg font-semibold text-[hsl(var(--foreground))]">Security Settings</h3>
-        <div class="space-y-4">
-          <div
-            class="flex items-center justify-between rounded-lg bg-[hsl(var(--secondary))]/30 p-4"
-          >
-            <div class="flex items-center gap-3">
-              <div
-                class="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--success))]/20"
-              >
-                <Shield class="h-5 w-5 text-[hsl(var(--success))]" />
-              </div>
-              <div>
-                <p class="font-medium text-[hsl(var(--foreground))]">Two-Factor Authentication</p>
-                <p class="text-sm text-[hsl(var(--muted-foreground))]">
-                  Require 2FA for all admin accounts
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={twoFactorEnabled}
-              aria-label="Toggle two-factor authentication"
-              class="relative h-6 w-11 rounded-full transition-colors {twoFactorEnabled
-                ? 'bg-[hsl(var(--primary))]'
-                : 'bg-[hsl(var(--secondary))]'}"
-              onclick={handleToggle2FA}
-            >
-              <span
-                class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform {twoFactorEnabled
-                  ? 'translate-x-5'
-                  : ''}"
-              ></span>
-            </button>
-          </div>
-          <div class="rounded-lg bg-[hsl(var(--secondary))]/30 p-4">
-            <div class="flex items-center gap-3">
-              <div
-                class="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--gold))]/20"
-              >
-                <Key class="h-5 w-5 text-[hsl(var(--gold))]" />
-              </div>
-              <div class="flex-1">
-                <p class="font-medium text-[hsl(var(--foreground))]">API Key</p>
-                <p class="font-mono text-sm text-[hsl(var(--muted-foreground))]">
-                  sk-****************************abc
-                </p>
-              </div>
-              <Button variant="outline" size="sm" onclick={handleRegenerateKey}>
-                <RefreshCw class="h-4 w-4" />
-                Regenerate
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  {:else if activeTab === 'api'}
-    <div class="space-y-4">
-      <div class="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6">
-        <h3 class="mb-4 text-lg font-semibold text-[hsl(var(--foreground))]">API Configuration</h3>
-        <div class="space-y-4">
-          <div>
-            <label
-              for="apiRateLimit"
-              class="mb-2 block text-sm font-medium text-[hsl(var(--foreground))]"
-              >API Rate Limit (requests/min)</label
-            >
-            <input
-              id="apiRateLimit"
-              type="number"
-              bind:value={apiRateLimit}
-              class="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 py-2.5 text-sm text-[hsl(var(--foreground))] focus:border-[hsl(var(--primary))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--primary))]"
-            />
-          </div>
-          <div>
-            <label
-              for="webhookUrl"
-              class="mb-2 block text-sm font-medium text-[hsl(var(--foreground))]"
-              >Webhook URL</label
-            >
-            <input
-              id="webhookUrl"
-              type="url"
-              bind:value={webhookUrl}
-              placeholder="https://your-webhook-endpoint.com"
-              class="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:border-[hsl(var(--primary))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--primary))]"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  {:else if activeTab === 'system'}
-    <div class="space-y-4">
-      <div class="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6">
-        <h3 class="mb-4 text-lg font-semibold text-[hsl(var(--foreground))]">System Settings</h3>
-        <div class="space-y-4">
-          <div
-            class="flex items-center justify-between rounded-lg bg-[hsl(var(--secondary))]/30 p-4"
-          >
-            <div class="flex items-center gap-3">
-              <div
-                class="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--info))]/20"
-              >
-                <Server class="h-5 w-5 text-[hsl(var(--info))]" />
-              </div>
-              <div>
-                <p class="font-medium text-[hsl(var(--foreground))]">Auto Backup</p>
-                <p class="text-sm text-[hsl(var(--muted-foreground))]">
-                  Automatically backup database daily
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={autoBackup}
-              aria-label="Toggle auto backup"
-              class="relative h-6 w-11 rounded-full transition-colors {autoBackup
-                ? 'bg-[hsl(var(--primary))]'
-                : 'bg-[hsl(var(--secondary))]'}"
-              onclick={handleToggleAutoBackup}
-            >
-              <span
-                class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform {autoBackup
-                  ? 'translate-x-5'
-                  : ''}"
-              ></span>
-            </button>
-          </div>
-          <div
-            class="flex items-center justify-between rounded-lg border border-[hsl(var(--warning))]/30 bg-[hsl(var(--warning))]/10 p-4"
-          >
-            <div class="flex items-center gap-3">
-              <div
-                class="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--warning))]/20"
-              >
-                <Lock class="h-5 w-5 text-[hsl(var(--warning))]" />
-              </div>
-              <div>
-                <p class="font-medium text-[hsl(var(--foreground))]">Maintenance Mode</p>
-                <p class="text-sm text-[hsl(var(--muted-foreground))]">
-                  Disable public access temporarily
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={maintenanceMode}
-              aria-label="Toggle maintenance mode"
-              class="relative h-6 w-11 rounded-full transition-colors {maintenanceMode
-                ? 'bg-[hsl(var(--warning))]'
-                : 'bg-[hsl(var(--secondary))]'}"
-              onclick={handleToggleMaintenance}
-            >
-              <span
-                class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform {maintenanceMode
-                  ? 'translate-x-5'
-                  : ''}"
-              ></span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div
-        class="rounded-xl border border-[hsl(var(--destructive))]/30 bg-[hsl(var(--destructive))]/10 p-6"
-      >
-        <h3 class="mb-2 text-lg font-semibold text-[hsl(var(--destructive))]">Danger Zone</h3>
-        <p class="mb-4 text-sm text-[hsl(var(--muted-foreground))]">
-          These actions are irreversible. Please proceed with caution.
+      <div>
+        <p class="font-medium text-[hsl(var(--foreground))]">Configuration is Immutable</p>
+        <p class="text-sm text-[hsl(var(--muted-foreground))]">
+          System settings are managed through the deployment pipeline. Changes require a
+          redeployment.
         </p>
-        <div class="flex flex-wrap gap-3">
-          <button
-            class="rounded-lg border border-[hsl(var(--destructive))] bg-transparent px-4 py-2 text-sm font-medium text-[hsl(var(--destructive))] transition-colors hover:bg-[hsl(var(--destructive))]/10"
-            onclick={handleClearCache}
-          >
-            Clear Cache
-          </button>
-          <button
-            class="rounded-lg bg-[hsl(var(--destructive))] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[hsl(var(--destructive))]/90"
-            onclick={handleResetDatabase}
-          >
-            Reset Database
-          </button>
-        </div>
       </div>
     </div>
-  {/if}
+  </div>
 </div>

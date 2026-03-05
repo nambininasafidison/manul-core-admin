@@ -168,7 +168,7 @@
         <div>
           <p class="text-sm text-gray-500 dark:text-gray-400">Avg ROI</p>
           <p class="text-xl font-bold text-gray-900 dark:text-white">
-            {stats.avg_roi.toFixed(2)}%
+            {(stats.avg_roi ?? 0).toFixed(2)}%
           </p>
         </div>
       </div>

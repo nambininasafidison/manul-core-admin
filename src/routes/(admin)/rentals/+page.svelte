@@ -9,9 +9,6 @@
     Bot,
     Calendar,
     Clock,
-    Eye,
-    Pause,
-    Play,
     RefreshCw,
     Search,
     Zap,
@@ -161,15 +158,6 @@
     a.click();
     URL.revokeObjectURL(url);
     toastStore.add('success', `Exported ${filteredRentals.length} rentals`);
-  }
-
-  function handlePauseResume(rental: RentalData) {
-    const action = rental.status === 'paused' ? 'Resume' : 'Pause';
-    toastStore.add('warning', `${action} rental is disabled in read-only admin mode`);
-  }
-
-  function handleExtendRental() {
-    toastStore.add('warning', 'Rental extension is disabled in read-only admin mode');
   }
 
   function getDaysRemaining(endDate: Date): number {
@@ -365,27 +353,7 @@
             </td>
             <td>
               <div class="flex items-center gap-1">
-                <button
-                  class="rounded-lg p-2 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))]"
-                  onclick={() => viewRental(rental)}
-                >
-                  <Eye class="h-4 w-4" />
-                </button>
-                {#if rental.status === 'active'}
-                  <button
-                    class="rounded-lg p-2 text-[hsl(var(--warning))] transition-colors hover:bg-[hsl(var(--warning))]/20"
-                    onclick={() => handlePauseResume(rental)}
-                  >
-                    <Pause class="h-4 w-4" />
-                  </button>
-                {:else if rental.status === 'paused'}
-                  <button
-                    class="rounded-lg p-2 text-[hsl(var(--success))] transition-colors hover:bg-[hsl(var(--success))]/20"
-                    onclick={() => handlePauseResume(rental)}
-                  >
-                    <Play class="h-4 w-4" />
-                  </button>
-                {/if}
+                <Button variant="outline" size="sm" onclick={() => viewRental(rental)}>View</Button>
               </div>
             </td>
           </tr>
@@ -476,23 +444,6 @@
         >
           Close
         </button>
-        {#if selectedRental.status === 'active'}
-          <button
-            class="flex-1 rounded-lg bg-[hsl(var(--warning))] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[hsl(var(--warning))]/90"
-            onclick={() => handlePauseResume(selectedRental!)}
-          >
-            <Pause class="mr-2 inline h-4 w-4" />
-            Pause Rental
-          </button>
-        {:else if selectedRental.status === 'expiring'}
-          <button
-            class="flex-1 rounded-lg bg-[hsl(var(--primary))] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[hsl(var(--primary))]/90"
-            onclick={handleExtendRental}
-          >
-            <RefreshCw class="mr-2 inline h-4 w-4" />
-            Extend Rental
-          </button>
-        {/if}
       </div>
     </div>
   {/if}

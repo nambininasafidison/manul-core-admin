@@ -9,7 +9,6 @@
     Clock,
     DollarSign,
     Download,
-    Eye,
     FileText,
     RefreshCw,
     Search,
@@ -44,7 +43,6 @@
   });
 
   let auditLogs = $state<AuditLog[]>([]);
-  let currentPage = $state(1);
   let selectedLog = $state<AuditLog | null>(null);
 
   async function loadData() {
@@ -137,18 +135,6 @@
 
   function viewLog(log: AuditLog) {
     selectedLog = log;
-  }
-
-  function handleNextPage() {
-    currentPage++;
-    toastStore.add('info', `Page ${currentPage} — showing cached results`);
-  }
-
-  function handlePrevPage() {
-    if (currentPage > 1) {
-      currentPage--;
-      toastStore.add('info', `Page ${currentPage}`);
-    }
   }
 
   const typeIcons: Record<string, typeof Shield> = {
@@ -362,41 +348,17 @@
               </span>
             </div>
           </div>
-          <button
-            class="rounded-lg p-2 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))]"
-            onclick={() => viewLog(log)}
-            title="View details"
-          >
-            <Eye class="h-4 w-4" />
-          </button>
+          <Button variant="outline" size="sm" onclick={() => viewLog(log)}>View</Button>
         </div>
       </div>
     {/each}
   </div>
 
-  <!-- Pagination -->
-  <div
-    class="flex items-center justify-between rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4"
-  >
+  <!-- Summary -->
+  <div class="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
     <p class="text-sm text-[hsl(var(--muted-foreground))]">
       Showing {filteredLogs.length} of {stats.totalLogs.toLocaleString()} logs
     </p>
-    <div class="flex gap-2">
-      <button
-        class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--secondary))]/30 px-3 py-1.5 text-sm font-medium text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--secondary))]/50 disabled:opacity-50"
-        onclick={handlePrevPage}
-        disabled={currentPage <= 1}
-      >
-        Previous
-      </button>
-      <span class="px-2 py-1.5 text-sm text-[hsl(var(--muted-foreground))]">{currentPage}</span>
-      <button
-        class="rounded-lg bg-[hsl(var(--primary))] px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[hsl(var(--primary))]/90"
-        onclick={handleNextPage}
-      >
-        Next
-      </button>
-    </div>
   </div>
 </div>
 

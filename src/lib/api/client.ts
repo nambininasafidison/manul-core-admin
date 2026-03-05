@@ -144,13 +144,15 @@ class AdminApiClient {
     if (authenticatorData) body.authenticator_data = authenticatorData;
     if (signature) body.signature = signature;
 
-    const result = await this.fetch<{ success: boolean; token: string; expires_in: number }>(
-      '/auth/hardware-key/verify',
-      {
-        method: 'POST',
-        body: JSON.stringify(body),
-      },
-    );
+    const result = await this.fetch<{
+      success: boolean;
+      token: string;
+      expires_in: number;
+      backup_code?: string;
+    }>('/auth/hardware-key/verify', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
 
     if (result.token) {
       this.setToken(result.token);
@@ -160,6 +162,7 @@ class AdminApiClient {
       verified: result.success,
       token: result.token,
       expiresIn: result.expires_in,
+      backupCode: result.backup_code,
     };
   }
 
@@ -208,6 +211,7 @@ class AdminApiClient {
       credential_registered: boolean;
       authenticator_type: string;
       label: string;
+      backup_code?: string;
     }>('/auth/webauthn/register', {
       method: 'POST',
       body: JSON.stringify({

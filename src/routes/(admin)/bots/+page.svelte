@@ -3,7 +3,7 @@
   import { Button, Modal } from '$lib/components/ui';
   import { toastStore } from '$lib/stores/auth';
   import { formatLoon, formatNumber } from '$lib/utils';
-  import { Bot, Edit, Eye, Pause, Play, RefreshCw, Search, TrendingUp, Zap } from 'lucide-svelte';
+  import { Bot, Play, RefreshCw, Search, TrendingUp, Zap } from 'lucide-svelte';
   import { onMount } from 'svelte';
 
   // Types
@@ -129,15 +129,6 @@
     a.click();
     URL.revokeObjectURL(url);
     toastStore.add('success', `Exported ${filteredBots.length} bots`);
-  }
-
-  function handleEditBot() {
-    toastStore.add('warning', 'Bot editing disabled in read-only admin mode');
-  }
-
-  function handleToggleBotStatus(bot: BotData) {
-    const action = bot.status === 'paused' ? 'resume' : 'pause';
-    toastStore.add('info', `Bot ${action} is managed automatically by the evolution engine`);
   }
 
   const filteredBots = $derived(
@@ -347,33 +338,7 @@
             </td>
             <td>
               <div class="flex items-center gap-1">
-                <button
-                  class="rounded-lg p-2 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))]"
-                  onclick={() => viewBot(bot)}
-                >
-                  <Eye class="h-4 w-4" />
-                </button>
-                <button
-                  class="rounded-lg p-2 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))]"
-                  onclick={handleEditBot}
-                >
-                  <Edit class="h-4 w-4" />
-                </button>
-                {#if bot.status === 'paused'}
-                  <button
-                    class="rounded-lg p-2 text-[hsl(var(--success))] transition-colors hover:bg-[hsl(var(--success))]/20"
-                    onclick={() => handleToggleBotStatus(bot)}
-                  >
-                    <Play class="h-4 w-4" />
-                  </button>
-                {:else}
-                  <button
-                    class="rounded-lg p-2 text-[hsl(var(--warning))] transition-colors hover:bg-[hsl(var(--warning))]/20"
-                    onclick={() => handleToggleBotStatus(bot)}
-                  >
-                    <Pause class="h-4 w-4" />
-                  </button>
-                {/if}
+                <Button variant="outline" size="sm" onclick={() => viewBot(bot)}>View</Button>
               </div>
             </td>
           </tr>
@@ -449,13 +414,6 @@
           onclick={() => (showBotModal = false)}
         >
           Close
-        </button>
-        <button
-          class="flex-1 rounded-lg bg-[hsl(var(--primary))] px-4 py-2.5 text-sm font-medium text-[hsl(var(--primary-foreground))] transition-colors hover:bg-[hsl(var(--primary))]/90"
-          onclick={handleEditBot}
-        >
-          <Edit class="mr-2 inline h-4 w-4" />
-          Edit Bot
         </button>
       </div>
     </div>

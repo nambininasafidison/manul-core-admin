@@ -15,13 +15,16 @@
     ChevronRight,
     Clock,
     Cpu,
+    Crown,
     Database,
     DollarSign,
     HardDrive,
+    Heart,
     Loader2,
     RefreshCw,
     Server,
     Shield,
+    Sparkles,
     TrendingUp,
     Users,
     Zap,
@@ -52,66 +55,15 @@
     };
   });
 
-  // Use store for system stats
+  // Use store for system stats — real data only, no mocks
   $: systemStats = {
     ...$statsStore,
-    motherSupremeCapital: $motherSupreme?.capital ?? 892341.67,
+    motherSupremeCapital: $motherSupreme?.capital ?? 0,
   };
 
-  // Use live data from store (loaded by dashboardStore.loadAll())
-  $: recentActivity =
-    $dashboardStore.recentActivity.length > 0
-      ? $dashboardStore.recentActivity
-      : [
-          {
-            type: 'rental' as const,
-            user: 'user_8472',
-            bot: 'Quantum Alpha',
-            amount: 500,
-            time: new Date(Date.now() - 300000),
-          },
-          {
-            type: 'spawn' as const,
-            bot: 'Neural Trader V3',
-            parent: 'Neural Trader V2',
-            time: new Date(Date.now() - 900000),
-          },
-          {
-            type: 'profit' as const,
-            user: 'user_1293',
-            amount: 847.23,
-            time: new Date(Date.now() - 1800000),
-          },
-          {
-            type: 'withdrawal' as const,
-            user: 'user_5621',
-            amount: 2500,
-            time: new Date(Date.now() - 3600000),
-          },
-          {
-            type: 'rental' as const,
-            user: 'user_9102',
-            bot: 'Chameleon Prime',
-            amount: 1200,
-            time: new Date(Date.now() - 7200000),
-          },
-        ];
-
-  $: alerts =
-    $dashboardStore.alerts.length > 0
-      ? $dashboardStore.alerts
-      : [
-          {
-            level: 'warning' as const,
-            message: 'High CPU usage on Trading Node 3',
-            time: new Date(Date.now() - 1800000),
-          },
-          {
-            level: 'info' as const,
-            message: 'Scheduled maintenance in 48 hours',
-            time: new Date(Date.now() - 86400000),
-          },
-        ];
+  // Live data from store (loaded by dashboardStore.loadAll()) — no mock fallbacks
+  $: recentActivity = $dashboardStore.recentActivity;
+  $: alerts = $dashboardStore.alerts;
 
   function handleLogout() {
     authStore.logout();
@@ -222,6 +174,93 @@
     </Card>
   </div>
 
+  <!-- Supreme Mother Overview -->
+  {#if $motherSupreme}
+    <Card
+      class="mb-8 border border-[hsl(var(--gold))]/30 bg-linear-to-r from-[hsl(var(--gold))]/5 to-[hsl(var(--purple))]/5"
+    >
+      <div class="p-4">
+        <div class="mb-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div
+              class="flex h-12 w-12 items-center justify-center rounded-xl bg-linear-to-br from-[hsl(var(--gold))]/30 to-[hsl(var(--purple))]/30"
+            >
+              <Crown class="h-7 w-7 text-[hsl(var(--gold))]" />
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-[hsl(var(--foreground))]">Mère Suprême</h3>
+              <p class="text-xs text-[hsl(var(--muted-foreground))]">
+                Ancestor of all bots — Dynamic capital allocation
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            {#if $motherSupreme.canSpawn}
+              <span
+                class="flex items-center gap-1 rounded-full bg-[hsl(var(--success))]/20 px-3 py-1 text-xs font-medium text-[hsl(var(--success))]"
+              >
+                <Sparkles class="h-3 w-3" /> Can Spawn
+              </span>
+            {:else}
+              <span
+                class="rounded-full bg-[hsl(var(--muted))]/20 px-3 py-1 text-xs font-medium text-[hsl(var(--muted-foreground))]"
+              >
+                Cooldown
+              </span>
+            {/if}
+          </div>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div class="rounded-lg bg-[hsl(var(--card))] p-3 shadow-sm">
+            <div class="flex items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">
+              <DollarSign class="h-3.5 w-3.5" /> Capital
+            </div>
+            <p class="mt-1 text-xl font-bold text-[hsl(var(--gold))]">
+              {formatCurrency($motherSupreme.capital)}
+            </p>
+          </div>
+
+          <div class="rounded-lg bg-[hsl(var(--card))] p-3 shadow-sm">
+            <div class="flex items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">
+              <Heart class="h-3.5 w-3.5" /> Children
+            </div>
+            <p class="mt-1 text-xl font-bold text-[hsl(var(--primary))]">
+              {formatNumber($motherSupreme.childrenCount)}
+            </p>
+          </div>
+
+          <div class="rounded-lg bg-[hsl(var(--card))] p-3 shadow-sm">
+            <div class="flex items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">
+              <Bot class="h-3.5 w-3.5" /> Max Generation
+            </div>
+            <p class="mt-1 text-xl font-bold text-[hsl(var(--accent))]">
+              {$motherSupreme.generationMax}
+            </p>
+          </div>
+
+          <div class="rounded-lg bg-[hsl(var(--card))] p-3 shadow-sm">
+            <div class="flex items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">
+              <TrendingUp class="h-3.5 w-3.5" /> Capital Share
+            </div>
+            <p class="mt-1 text-xl font-bold text-[hsl(var(--foreground))]">
+              {($motherSupreme.compoundRate * 100).toFixed(0)}%
+            </p>
+          </div>
+
+          <div class="rounded-lg bg-[hsl(var(--card))] p-3 shadow-sm">
+            <div class="flex items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">
+              <Clock class="h-3.5 w-3.5" /> Last Activity
+            </div>
+            <p class="mt-1 text-sm font-medium text-[hsl(var(--foreground))]">
+              {formatRelativeTime(new Date($motherSupreme.lastActivity))}
+            </p>
+          </div>
+        </div>
+      </div>
+    </Card>
+  {/if}
+
   <!-- System Health & Activity -->
   <div class="grid gap-6 lg:grid-cols-3">
     <!-- System Health -->
@@ -294,66 +333,75 @@
       </div>
 
       <div class="space-y-3">
-        {#each recentActivity as activity}
+        {#if recentActivity.length === 0}
           <div
-            class="flex items-center justify-between rounded-lg bg-[hsl(var(--secondary))]/50 p-3"
+            class="flex flex-col items-center justify-center py-8 text-[hsl(var(--muted-foreground))]"
           >
-            <div class="flex items-center gap-3">
-              {#if activity.type === 'rental'}
-                <div class="rounded-lg bg-[hsl(var(--primary))]/20 p-2">
-                  <Bot class="h-4 w-4 text-[hsl(var(--primary))]" />
-                </div>
-                <div>
-                  <p class="text-sm font-medium text-[hsl(var(--foreground))]">
-                    New Rental: {activity.bot}
-                  </p>
-                  <p class="text-xs text-[hsl(var(--muted-foreground))]">
-                    by {activity.user} • {formatCurrency(activity.amount || 0)}
-                  </p>
-                </div>
-              {:else if activity.type === 'spawn'}
-                <div class="rounded-lg bg-[hsl(var(--purple))]/20 p-2">
-                  <Zap class="h-4 w-4 text-[hsl(var(--purple))]" />
-                </div>
-                <div>
-                  <p class="text-sm font-medium text-[hsl(var(--foreground))]">
-                    Bot Spawned: {activity.bot}
-                  </p>
-                  <p class="text-xs text-[hsl(var(--muted-foreground))]">
-                    from {activity.parent}
-                  </p>
-                </div>
-              {:else if activity.type === 'profit'}
-                <div class="rounded-lg bg-[hsl(var(--success))]/20 p-2">
-                  <TrendingUp class="h-4 w-4 text-[hsl(var(--success))]" />
-                </div>
-                <div>
-                  <p class="text-sm font-medium text-[hsl(var(--foreground))]">
-                    Profit Distributed
-                  </p>
-                  <p class="text-xs text-[hsl(var(--muted-foreground))]">
-                    {activity.user} • +{formatCurrency(activity.amount || 0)}
-                  </p>
-                </div>
-              {:else}
-                <div class="rounded-lg bg-[hsl(var(--gold))]/20 p-2">
-                  <DollarSign class="h-4 w-4 text-[hsl(var(--gold))]" />
-                </div>
-                <div>
-                  <p class="text-sm font-medium text-[hsl(var(--foreground))]">
-                    Withdrawal Processed
-                  </p>
-                  <p class="text-xs text-[hsl(var(--muted-foreground))]">
-                    {activity.user} • {formatCurrency(activity.amount || 0)}
-                  </p>
-                </div>
-              {/if}
-            </div>
-            <span class="text-xs text-[hsl(var(--muted-foreground))]">
-              {formatRelativeTime(activity.time)}
-            </span>
+            <Clock class="mb-2 h-8 w-8 opacity-50" />
+            <p class="text-sm">No recent activity yet</p>
           </div>
-        {/each}
+        {:else}
+          {#each recentActivity as activity}
+            <div
+              class="flex items-center justify-between rounded-lg bg-[hsl(var(--secondary))]/50 p-3"
+            >
+              <div class="flex items-center gap-3">
+                {#if activity.type === 'rental'}
+                  <div class="rounded-lg bg-[hsl(var(--primary))]/20 p-2">
+                    <Bot class="h-4 w-4 text-[hsl(var(--primary))]" />
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-[hsl(var(--foreground))]">
+                      New Rental: {activity.bot}
+                    </p>
+                    <p class="text-xs text-[hsl(var(--muted-foreground))]">
+                      by {activity.user} • {formatCurrency(activity.amount || 0)}
+                    </p>
+                  </div>
+                {:else if activity.type === 'spawn'}
+                  <div class="rounded-lg bg-[hsl(var(--purple))]/20 p-2">
+                    <Zap class="h-4 w-4 text-[hsl(var(--purple))]" />
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-[hsl(var(--foreground))]">
+                      Bot Spawned: {activity.bot}
+                    </p>
+                    <p class="text-xs text-[hsl(var(--muted-foreground))]">
+                      from {activity.parent}
+                    </p>
+                  </div>
+                {:else if activity.type === 'profit'}
+                  <div class="rounded-lg bg-[hsl(var(--success))]/20 p-2">
+                    <TrendingUp class="h-4 w-4 text-[hsl(var(--success))]" />
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-[hsl(var(--foreground))]">
+                      Profit Distributed
+                    </p>
+                    <p class="text-xs text-[hsl(var(--muted-foreground))]">
+                      {activity.user} • +{formatCurrency(activity.amount || 0)}
+                    </p>
+                  </div>
+                {:else}
+                  <div class="rounded-lg bg-[hsl(var(--gold))]/20 p-2">
+                    <DollarSign class="h-4 w-4 text-[hsl(var(--gold))]" />
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-[hsl(var(--foreground))]">
+                      Withdrawal Processed
+                    </p>
+                    <p class="text-xs text-[hsl(var(--muted-foreground))]">
+                      {activity.user} • {formatCurrency(activity.amount || 0)}
+                    </p>
+                  </div>
+                {/if}
+              </div>
+              <span class="text-xs text-[hsl(var(--muted-foreground))]">
+                {formatRelativeTime(activity.time)}
+              </span>
+            </div>
+          {/each}
+        {/if}
       </div>
     </Card>
   </div>

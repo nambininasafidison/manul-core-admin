@@ -139,6 +139,11 @@
     toastStore.add('success', 'Finance report exported');
   }
 
+  const defaultTypeColor = {
+    bg: 'bg-[hsl(var(--muted-foreground))]/20',
+    text: 'text-[hsl(var(--muted-foreground))]',
+  };
+
   const typeColors: Record<string, { bg: string; text: string }> = {
     profit: { bg: 'bg-[hsl(var(--success))]/20', text: 'text-[hsl(var(--success))]' },
     rental: { bg: 'bg-[hsl(var(--info))]/20', text: 'text-[hsl(var(--info))]' },
@@ -146,6 +151,10 @@
     withdrawal: { bg: 'bg-[hsl(var(--destructive))]/20', text: 'text-[hsl(var(--destructive))]' },
     deposit: { bg: 'bg-[hsl(var(--primary))]/20', text: 'text-[hsl(var(--primary))]' },
   };
+
+  function getTypeColor(type: string) {
+    return typeColors[type] || defaultTypeColor;
+  }
 
   const rankColors = [
     'text-[hsl(var(--gold))]',
@@ -362,9 +371,9 @@
             <tr class="transition-colors hover:bg-[hsl(var(--secondary))]/30">
               <td>
                 <span
-                  class="rounded-full px-2.5 py-1 text-xs font-medium capitalize {typeColors[
-                    tx.type
-                  ].bg} {typeColors[tx.type].text}"
+                  class="rounded-full px-2.5 py-1 text-xs font-medium capitalize {getTypeColor(
+                    tx.type,
+                  ).bg} {getTypeColor(tx.type).text}"
                 >
                   {tx.type}
                 </span>

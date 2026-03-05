@@ -11,11 +11,14 @@
     recordFailedAttempt,
   } from '$lib/security';
   import { authStore, deviceFingerprintStore, securityAlertsStore } from '$lib/stores';
-  import { AlertTriangle, Shield } from 'lucide-svelte';
+  import { AlertTriangle, Check, Copy, Shield, ShieldAlert } from 'lucide-svelte';
   import { onMount } from 'svelte';
 
   let error = $state('');
   let isLoading = $state(false);
+  let showBackupModal = $state(false);
+  let pendingBackupCode = $state<string | null>(null);
+  let backupCodeCopied = $state(false);
   let attemptsRemaining = $state<number | undefined>(undefined);
   let lockoutRemaining = $state<number | undefined>(undefined);
   let challenge = $state<string | undefined>(undefined);
@@ -150,8 +153,12 @@
       // le token a déjà été posé par l'API client dans registerWebAuthnCredential
       const isRegistration = response.startsWith('registered:');
       let result;
+      let extractedBackupCode: string | null = null;
 
       if (isRegistration) {
+        // Format: "registered:<credentialId>:<backupCode>"
+        const regParts = response.split(':');
+        if (regParts[2]) extractedBackupCode = regParts[2];
         // L'enregistrement a déjà authentifié — le token est déjà posé
         result = { verified: true, token: adminApi.getToken(), expiresIn: 3600 };
       } else if (response.startsWith('passkey:')) {
@@ -210,8 +217,18 @@
           deviceFingerprint: $deviceFingerprintStore || '',
         });
 
-        securityAlertsStore.add('success', 'Authentification réussie');
-        goto('/dashboard');
+        // Récupérer le backup code (de l'enregistrement ou de l'API)
+        const backupCode = extractedBackupCode || result.backupCode || null;
+
+        if (backupCode) {
+          // Afficher le modal avec le backup code avant de rediriger
+          pendingBackupCode = backupCode;
+          showBackupModal = true;
+          securityAlertsStore.add('success', 'Authentification réussie');
+        } else {
+          securityAlertsStore.add('success', 'Authentification réussie');
+          goto('/dashboard');
+        }
       } else {
         error = 'Échec de vérification';
         logSecurityEvent('hardware_key_failed', {
@@ -293,3 +310,78 @@
     </div>
   </div>
 </div>
+
+<!-- Backup Code Modal -->
+{#if showBackupModal && pendingBackupCode}
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div
+      class="w-full max-w-md rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-8 shadow-2xl"
+    >
+      <!-- Icon -->
+      <div
+        class="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[hsl(var(--warning))]/20"
+      >
+        <ShieldAlert class="h-8 w-8 text-[hsl(var(--warning))]" />
+      </div>
+
+      <!-- Title -->
+      <h2 class="text-center text-xl font-bold text-[hsl(var(--foreground))]">Code d'urgence</h2>
+      <p class="mt-2 text-center text-sm text-[hsl(var(--muted-foreground))]">
+        Notez ce code en lieu sûr. Il vous permettra de vous connecter si votre passkey est
+        indisponible. <strong class="text-[hsl(var(--warning))]">Ce code est à usage unique.</strong
+        >
+      </p>
+
+      <!-- Backup Code Display -->
+      <div
+        class="mt-6 rounded-xl border-2 border-dashed border-[hsl(var(--warning))]/40 bg-[hsl(var(--warning))]/5 p-6"
+      >
+        <p
+          class="text-center font-mono text-2xl font-bold tracking-[0.3em] text-[hsl(var(--foreground))]"
+        >
+          {pendingBackupCode}
+        </p>
+      </div>
+
+      <!-- Copy Button -->
+      <button
+        onclick={async () => {
+          if (pendingBackupCode) {
+            await navigator.clipboard.writeText(pendingBackupCode);
+            backupCodeCopied = true;
+            setTimeout(() => (backupCodeCopied = false), 2000);
+          }
+        }}
+        class="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-[hsl(var(--border))] px-4 py-2.5 text-sm font-medium text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--muted))]"
+      >
+        {#if backupCodeCopied}
+          <Check class="h-4 w-4 text-green-500" />
+          Copié !
+        {:else}
+          <Copy class="h-4 w-4" />
+          Copier le code
+        {/if}
+      </button>
+
+      <!-- Warning -->
+      <div
+        class="mt-4 rounded-lg bg-[hsl(var(--destructive))]/10 p-3 text-center text-xs text-[hsl(var(--destructive))]"
+      >
+        <AlertTriangle class="inline h-3.5 w-3.5 mr-1" />
+        Ce code ne sera plus affiché après cette page.
+      </div>
+
+      <!-- Continue Button -->
+      <button
+        onclick={() => {
+          showBackupModal = false;
+          pendingBackupCode = null;
+          goto('/dashboard');
+        }}
+        class="mt-6 w-full rounded-xl bg-linear-to-r from-[hsl(var(--primary))] to-[hsl(var(--gold))] px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl"
+      >
+        J'ai noté mon code — Continuer
+      </button>
+    </div>
+  </div>
+{/if}

@@ -6,18 +6,12 @@
   import {
     AlertTriangle,
     Ban,
-    Check,
     Clock,
-    Eye,
     Globe,
-    Key,
-    Lock,
     RefreshCw,
     Shield,
     ShieldAlert,
     ShieldCheck,
-    UserX,
-    X,
   } from 'lucide-svelte';
   import { onMount } from 'svelte';
 
@@ -131,18 +125,6 @@
       <Button variant="outline" size="sm" onclick={loadData} disabled={loading}>
         <RefreshCw class="h-4 w-4 {loading ? 'animate-spin' : ''}" />
         {loading ? 'Scanning...' : 'Scan Now'}
-      </Button>
-      <Button
-        variant="default"
-        size="sm"
-        onclick={() =>
-          toastStore.add(
-            'info',
-            'Lockdown mode is managed via infrastructure. Use the deployment pipeline for emergency lockdowns.',
-          )}
-      >
-        <Lock class="h-4 w-4" />
-        Lockdown Mode
       </Button>
     </div>
   </div>
@@ -285,28 +267,6 @@
                 {alert.status}
               </span>
             </div>
-            <div class="mt-3 flex gap-2">
-              <button
-                class="flex-1 rounded-lg bg-[hsl(var(--secondary))] px-3 py-1.5 text-xs font-medium text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--secondary))]/80"
-                onclick={() => toastStore.add('info', `Investigating alert: ${alert.message}`)}
-              >
-                <Eye class="mr-1 inline h-3 w-3" />
-                Investigate
-              </button>
-              {#if alert.status !== 'resolved'}
-                <button
-                  class="rounded-lg bg-[hsl(var(--success))] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[hsl(var(--success))]/90"
-                  onclick={() => {
-                    alert.status = 'resolved';
-                    securityAlerts = [...securityAlerts];
-                    toastStore.add('success', 'Alert marked as resolved');
-                  }}
-                >
-                  <Check class="mr-1 inline h-3 w-3" />
-                  Resolve
-                </button>
-              {/if}
-            </div>
           </div>
         {/each}
       </div>
@@ -316,18 +276,6 @@
     <div class="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
       <div class="flex items-center justify-between border-b border-[hsl(var(--border))] p-4">
         <h2 class="text-lg font-semibold text-[hsl(var(--foreground))]">Blocked IPs</h2>
-        <Button
-          variant="outline"
-          size="sm"
-          onclick={() =>
-            toastStore.add(
-              'info',
-              'IP blocking is managed automatically by the firewall. Manual blocks require infrastructure access.',
-            )}
-        >
-          <Ban class="h-4 w-4" />
-          Add IP
-        </Button>
       </div>
       <div class="space-y-3 p-4">
         {#each blockedIPs as blocked}
@@ -346,87 +294,10 @@
                   <span>Blocked {formatRelativeTime(blocked.blocked_at)}</span>
                 </div>
               </div>
-              <button
-                class="rounded-lg p-2 text-[hsl(var(--destructive))] transition-colors hover:bg-[hsl(var(--destructive))]/20"
-                onclick={() =>
-                  toastStore.add(
-                    'info',
-                    'IP unblocking requires infrastructure access for security.',
-                  )}
-              >
-                <X class="h-4 w-4" />
-              </button>
             </div>
           </div>
         {/each}
       </div>
-    </div>
-  </div>
-
-  <!-- Security Actions -->
-  <div class="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-    <h2 class="mb-4 text-lg font-semibold text-[hsl(var(--foreground))]">Quick Actions</h2>
-    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <button
-        class="flex items-center gap-3 rounded-lg bg-[hsl(var(--secondary))]/30 p-4 text-left transition-colors hover:bg-[hsl(var(--secondary))]/50"
-        onclick={() =>
-          toastStore.add('info', 'API key rotation is handled automatically every 24 hours.')}
-      >
-        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--info))]/20">
-          <Key class="h-5 w-5 text-[hsl(var(--info))]" />
-        </div>
-        <div>
-          <p class="font-medium text-[hsl(var(--foreground))]">Rotate API Keys</p>
-          <p class="text-xs text-[hsl(var(--muted-foreground))]">Generate new keys</p>
-        </div>
-      </button>
-      <button
-        class="flex items-center gap-3 rounded-lg bg-[hsl(var(--secondary))]/30 p-4 text-left transition-colors hover:bg-[hsl(var(--secondary))]/50"
-        onclick={() =>
-          toastStore.add('info', 'Force logout requires infrastructure access for security.')}
-      >
-        <div
-          class="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--warning))]/20"
-        >
-          <UserX class="h-5 w-5 text-[hsl(var(--warning))]" />
-        </div>
-        <div>
-          <p class="font-medium text-[hsl(var(--foreground))]">Force Logout All</p>
-          <p class="text-xs text-[hsl(var(--muted-foreground))]">Invalidate sessions</p>
-        </div>
-      </button>
-      <button
-        class="flex items-center gap-3 rounded-lg bg-[hsl(var(--secondary))]/30 p-4 text-left transition-colors hover:bg-[hsl(var(--secondary))]/50"
-        onclick={() => toastStore.add('info', 'Firewall rules are updated automatically.')}
-      >
-        <div
-          class="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--primary))]/20"
-        >
-          <Shield class="h-5 w-5 text-[hsl(var(--primary))]" />
-        </div>
-        <div>
-          <p class="font-medium text-[hsl(var(--foreground))]">Update Firewall</p>
-          <p class="text-xs text-[hsl(var(--muted-foreground))]">Refresh rules</p>
-        </div>
-      </button>
-      <button
-        class="flex items-center gap-3 rounded-lg bg-[hsl(var(--secondary))]/30 p-4 text-left transition-colors hover:bg-[hsl(var(--secondary))]/50"
-        onclick={() =>
-          toastStore.add(
-            'warning',
-            'Emergency lockdown requires infrastructure access via deployment pipeline.',
-          )}
-      >
-        <div
-          class="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--destructive))]/20"
-        >
-          <Lock class="h-5 w-5 text-[hsl(var(--destructive))]" />
-        </div>
-        <div>
-          <p class="font-medium text-[hsl(var(--foreground))]">Emergency Lock</p>
-          <p class="text-xs text-[hsl(var(--muted-foreground))]">Lockdown system</p>
-        </div>
-      </button>
     </div>
   </div>
 </div>

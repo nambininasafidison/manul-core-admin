@@ -10,10 +10,8 @@
     Database,
     Download,
     HardDrive,
-    Play,
     RefreshCw,
     Server,
-    Upload,
     Zap,
   } from 'lucide-svelte';
   import { onMount } from 'svelte';
@@ -108,38 +106,9 @@
 
   const operationIcons: Record<string, typeof Database> = {
     backup: Download,
-    migration: Upload,
     vacuum: RefreshCw,
     reindex: Zap,
   };
-
-  function handleFullBackup() {
-    toastStore.add(
-      'info',
-      'Backups are automated via CronJob. Manual backup disabled in read-only mode.',
-    );
-  }
-
-  function handleVacuum() {
-    toastStore.add(
-      'info',
-      'Vacuum operations are scheduled automatically by PostgreSQL. Manual trigger disabled.',
-    );
-  }
-
-  function handleReindex() {
-    toastStore.add(
-      'info',
-      'Reindexing is managed by the automated maintenance window. Manual trigger disabled.',
-    );
-  }
-
-  function handleRunMigration() {
-    toastStore.add(
-      'warning',
-      'Migrations are applied during deployments. Manual trigger disabled in read-only mode.',
-    );
-  }
 
   function getNextBackupText(): string {
     const diff = dbStats.nextBackup.getTime() - Date.now();
@@ -166,10 +135,6 @@
       <Button variant="outline" size="sm" onclick={loadData} disabled={loading}>
         <RefreshCw class="h-4 w-4 {loading ? 'animate-spin' : ''}" />
         {loading ? 'Loading...' : 'Refresh'}
-      </Button>
-      <Button variant="default" size="sm" disabled>
-        <Download class="h-4 w-4" />
-        Backup (Auto)
       </Button>
     </div>
   </div>
@@ -384,65 +349,6 @@
           </div>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- Quick Actions -->
-  <div class="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-    <h2 class="mb-4 text-lg font-semibold text-[hsl(var(--foreground))]">Maintenance Actions</h2>
-    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <button
-        class="flex items-center gap-3 rounded-lg bg-[hsl(var(--secondary))]/30 p-4 text-left transition-colors hover:bg-[hsl(var(--secondary))]/50"
-        onclick={handleFullBackup}
-      >
-        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--info))]/20">
-          <Download class="h-5 w-5 text-[hsl(var(--info))]" />
-        </div>
-        <div>
-          <p class="font-medium text-[hsl(var(--foreground))]">Full Backup</p>
-          <p class="text-xs text-[hsl(var(--muted-foreground))]">Create backup now</p>
-        </div>
-      </button>
-      <button
-        class="flex items-center gap-3 rounded-lg bg-[hsl(var(--secondary))]/30 p-4 text-left transition-colors hover:bg-[hsl(var(--secondary))]/50"
-        onclick={handleVacuum}
-      >
-        <div
-          class="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--primary))]/20"
-        >
-          <RefreshCw class="h-5 w-5 text-[hsl(var(--primary))]" />
-        </div>
-        <div>
-          <p class="font-medium text-[hsl(var(--foreground))]">Vacuum</p>
-          <p class="text-xs text-[hsl(var(--muted-foreground))]">Reclaim storage</p>
-        </div>
-      </button>
-      <button
-        class="flex items-center gap-3 rounded-lg bg-[hsl(var(--secondary))]/30 p-4 text-left transition-colors hover:bg-[hsl(var(--secondary))]/50"
-        onclick={handleReindex}
-      >
-        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--gold))]/20">
-          <Zap class="h-5 w-5 text-[hsl(var(--gold))]" />
-        </div>
-        <div>
-          <p class="font-medium text-[hsl(var(--foreground))]">Reindex</p>
-          <p class="text-xs text-[hsl(var(--muted-foreground))]">Rebuild indexes</p>
-        </div>
-      </button>
-      <button
-        class="flex items-center gap-3 rounded-lg bg-[hsl(var(--secondary))]/30 p-4 text-left transition-colors hover:bg-[hsl(var(--secondary))]/50"
-        onclick={handleRunMigration}
-      >
-        <div
-          class="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--warning))]/20"
-        >
-          <Play class="h-5 w-5 text-[hsl(var(--warning))]" />
-        </div>
-        <div>
-          <p class="font-medium text-[hsl(var(--foreground))]">Run Migration</p>
-          <p class="text-xs text-[hsl(var(--muted-foreground))]">Apply pending</p>
-        </div>
-      </button>
     </div>
   </div>
 </div>

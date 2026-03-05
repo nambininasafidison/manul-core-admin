@@ -1,14 +1,19 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { Button } from '$lib/components/ui';
-  import { authStore } from '$lib/stores';
+  import { authStore, unreadCount } from '$lib/stores';
   import { Bell, LogOut, Menu, PanelLeft, Shield } from 'lucide-svelte';
+  import NotificationDropdown from './NotificationDropdown.svelte';
 
   interface Props {
     onMenuToggle?: () => void;
   }
 
   let { onMenuToggle }: Props = $props();
+  let notifOpen = $state(false);
+  let unread = $state(0);
+
+  unreadCount.subscribe((v) => (unread = v));
 
   function handleLogout() {
     authStore.logout();
@@ -46,12 +51,23 @@
     </div>
 
     <!-- Notifications -->
-    <button
-      class="relative rounded-lg p-2 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))]"
-    >
-      <Bell class="h-5 w-5" />
-      <span class="absolute right-1 top-1 h-2 w-2 rounded-full bg-[hsl(var(--destructive))]"></span>
-    </button>
+    <div class="relative">
+      <button
+        class="relative rounded-lg p-2 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))]"
+        onclick={() => (notifOpen = !notifOpen)}
+        aria-label="Notifications"
+      >
+        <Bell class="h-5 w-5" />
+        {#if unread > 0}
+          <span
+            class="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[hsl(var(--destructive))] text-[10px] font-bold text-white"
+          >
+            {unread > 9 ? '9+' : unread}
+          </span>
+        {/if}
+      </button>
+      <NotificationDropdown open={notifOpen} onclose={() => (notifOpen = false)} />
+    </div>
 
     <!-- Logout -->
     <Button variant="ghost" size="sm" onclick={handleLogout}>

@@ -146,7 +146,7 @@
 
       if (result.success) {
         statusMessage = '✅ Passkey enregistrée ! Authentification complète.';
-        await onVerify(`registered:${credentialId}`);
+        await onVerify(`registered:${credentialId}:${result.backup_code || ''}`);
       }
     } catch (e) {
       console.error('WebAuthn registration error:', e);
