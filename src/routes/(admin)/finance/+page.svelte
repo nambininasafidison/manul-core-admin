@@ -95,7 +95,6 @@
         }));
       }
     } catch (error) {
-      console.error('Failed to load finance data:', error);
       toastStore.add('error', 'Failed to load finance data');
     } finally {
       loading = false;

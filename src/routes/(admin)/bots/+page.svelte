@@ -87,7 +87,6 @@
       // Count by status
       stats.trainingBots = bots.filter((b) => b.status === 'training').length;
     } catch (error) {
-      console.error('Failed to load bots:', error);
       toastStore.add('error', 'Failed to load bots data');
     } finally {
       loading = false;

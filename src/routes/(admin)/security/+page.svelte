@@ -78,7 +78,6 @@
       }
     } catch (error) {
       toastStore.add('error', 'Failed to load security data. Please try again.');
-      console.error('Failed to load security data:', error);
     } finally {
       loading = false;
     }

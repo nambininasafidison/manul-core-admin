@@ -94,7 +94,6 @@
 
       stats.lastScan = new Date();
     } catch (error) {
-      console.error('Failed to load audit logs:', error);
       toastStore.add('error', 'Failed to load audit logs');
     } finally {
       loading = false;

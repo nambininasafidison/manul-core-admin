@@ -21,7 +21,6 @@
       const configRes = await adminApi.getConfig();
       systemConfig = configRes;
     } catch (error) {
-      console.error('Failed to load config:', error);
       toastStore.add('error', 'Failed to load system configuration');
     } finally {
       loading = false;

@@ -149,7 +149,6 @@
         await onVerify(`registered:${credentialId}:${result.backup_code || ''}`);
       }
     } catch (e) {
-      console.error('WebAuthn registration error:', e);
       if (e instanceof Error && e.name === 'NotAllowedError') {
         statusMessage = "Enregistrement annulé par l'utilisateur";
       } else {
@@ -248,7 +247,6 @@
         `passkey:${credentialId}:${clientDataB64}:${authenticatorDataB64}:${signatureB64}`,
       );
     } catch (e) {
-      console.error('Passkey auth error:', e);
       if (e instanceof Error && e.name === 'NotAllowedError') {
         statusMessage = "Authentification annulée par l'utilisateur";
       } else {

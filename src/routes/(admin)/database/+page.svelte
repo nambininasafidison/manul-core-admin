@@ -93,7 +93,6 @@
         },
       ];
     } catch (error) {
-      console.error('Failed to load database stats:', error);
       toastStore.add('error', 'Failed to load database stats');
     } finally {
       loading = false;

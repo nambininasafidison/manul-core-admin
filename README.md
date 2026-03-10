@@ -1,145 +1,141 @@
-# ManulCore Admin Panel
+# ManulCore Admin Dashboard
 
-Interface d'administration et de monitoring pour la plateforme ManulCore.
+Administration dashboard for the ManulCore autonomous trading platform. Built with SvelteKit 2, Svelte 5, and TailwindCSS 4. Deployed on Cloudflare Pages.
 
-> ⚠️ **Monitoring en lecture seule** — L'admin panel est un dashboard d'observation. Aucune action de modification n'est possible via l'UI. Le système (bots, trades, allocations) est entièrement autonome.
+## Tech Stack
 
-## Stack technique
+| Layer      | Technology                                        |
+| ---------- | ------------------------------------------------- |
+| Framework  | SvelteKit 2 (`@sveltejs/kit` ^2.49)               |
+| UI         | Svelte 5 (`svelte` ^5.45)                         |
+| Styling    | TailwindCSS 4 + `@tailwindcss/forms`              |
+| Icons      | Lucide Svelte                                     |
+| State      | TanStack Svelte Query v6                          |
+| Validation | Zod v4                                            |
+| Auth       | JWT (`jose`), TOTP (`otpauth`/`otplib`), QR codes |
+| Password   | Argon2 (`argon2` ^0.44)                           |
+| Adapter    | Cloudflare Pages                                  |
+| Bundler    | Vite 7                                            |
+| Language   | TypeScript 5.9                                    |
 
-| Composant | Technologie                                           |
-| --------- | ----------------------------------------------------- |
-| Framework | SvelteKit 2, Svelte 5                                 |
-| Styles    | TailwindCSS 4                                         |
-| Langage   | TypeScript 5                                          |
-| Auth      | Triple facteur (voir ci-dessous)                      |
-| State     | Svelte Stores (runes)                                 |
-| HTTP      | Proxy SvelteKit (X-Admin-Secret injecté côté serveur) |
+## Project Structure
 
-## Authentification admin
-
-Triple authentification séquentielle obligatoire :
-
-### Étape 1 — Identifiants
-
-- **Username** : généré par le système (format `manul_XXXXXX`), affiché dans les logs backend au premier démarrage
-- **Mot de passe** : valeur de la variable d'environnement `MANUL_ADMIN_PASSWORD` côté backend (défaut en dev : clé insecure)
-
-### Étape 2 — TOTP (Time-based One-Time Password)
-
-- Code 6 chiffres validé par `totp-rs` (RFC 6238, SHA1, 30 secondes)
-- Au premier démarrage du backend, le **secret Base32** est affiché dans les logs
-- Scanner ce secret dans une app authenticator (Google Authenticator, Authy, etc.)
-- Pour persister le secret entre redémarrages : `export MANUL_TOTP_SECRET=<base32_secret>`
-
-### Étape 3 — Passkey (WebAuthn)
-
-Le navigateur propose automatiquement les méthodes d'authentification disponibles :
-
-- **Fingerprint / Face ID** (biométrie intégrée à l'appareil)
-- **Microsoft Authenticator** (passkey sur téléphone)
-- **Google Passkey** (synchronisé via compte Google)
-- **YubiKey / clé de sécurité USB/NFC**
-
-Enregistré une fois au premier login, réutilisé aux connexions suivantes.
-
-**Urgence** : 10 codes à usage unique affichés au premier démarrage (pas dans les logs). Ne servent QUE si l'étape 3 échoue.
-
-> **Note** : `ADMIN_SECRET` dans le `.env` admin n'est PAS le mot de passe du login.
-> C'est le header `X-Admin-Secret` injecté par le proxy SvelteKit vers le backend.
+```
+manul-core-admin/
+├── src/
+│   ├── app.html                 # HTML shell
+│   ├── app.css                  # Global styles (TailwindCSS)
+│   ├── hooks.server.ts          # Server hooks (auth middleware)
+│   ├── lib/
+│   │   ├── api/                 # Backend API client functions
+│   │   ├── assets/              # Static assets (images, logos)
+│   │   ├── components/          # Reusable Svelte components
+│   │   ├── security/            # Security utilities (TOTP, hashing)
+│   │   ├── stores/              # Svelte stores (auth state, settings)
+│   │   ├── types/               # TypeScript type definitions
+│   │   ├── utils/               # Utility functions
+│   │   ├── config.ts            # API base URL, environment config
+│   │   └── index.ts             # Library barrel exports
+│   └── routes/
+│       ├── +layout.svelte       # Root layout
+│       ├── +page.svelte         # Landing / redirect
+│       ├── api/                  # Server-side API routes
+│       ├── login/                # Admin login page
+│       └── (admin)/              # Protected route group
+│           ├── +layout.svelte    # Admin layout (sidebar, header)
+│           ├── allocations/      # Bot capital allocation management
+│           ├── audit/            # Audit log viewer
+│           ├── bots/             # Bot management (create, monitor, control)
+│           ├── dashboard/        # System overview, metrics, charts
+│           ├── database/         # Database administration
+│           ├── finance/          # Financial reports, P&L, revenue
+│           ├── rentals/          # Bot rental marketplace management
+│           ├── security/         # Security settings, IP blocking, keys
+│           ├── settings/         # System configuration
+│           └── users/            # User management, roles, bans
+├── static/
+│   └── robots.txt
+├── k8s/                          # Kubernetes manifests
+│   ├── configmap.yaml
+│   ├── deployment.yaml
+│   ├── hpa.yaml                  # Horizontal Pod Autoscaler
+│   ├── ingress.yaml
+│   ├── namespace.yaml
+│   ├── secrets.yaml
+│   └── service.yaml
+├── docker-compose.yml
+├── Dockerfile
+├── package.json
+├── svelte.config.js
+├── tsconfig.json
+├── vite.config.ts
+└── wrangler.jsonc                # Cloudflare Workers config
+```
 
 ## Pages
 
-| Route          | Description                             | Fonctionnalités                         |
-| -------------- | --------------------------------------- | --------------------------------------- |
-| `/login`       | Authentification triple facteur         | Credentials → TOTP → HW Key             |
-| `/dashboard`   | Vue d'ensemble, métriques temps réel    | Stats live, uptime, bots, SupremeMother |
-| `/bots`        | Liste complète des bots                 | Filtres, export CSV                     |
-| `/users`       | Liste des utilisateurs                  | Filtres, export CSV                     |
-| `/allocations` | Allocations de capital et stratégies    | Répartition, historique                 |
-| `/rentals`     | Contrats de location actifs             | Stats, export CSV                       |
-| `/finance`     | Revenus, transactions, résumé financier | Export rapport CSV                      |
-| `/security`    | Alertes sécurité, menaces, sessions     | Status temps réel                       |
-| `/audit`       | Logs système et événements de sécurité  | Pagination, export CSV                  |
-| `/database`    | Statistiques base de données            | Pool, tables, backups                   |
-| `/settings`    | Configuration système (lecture seule)   | Paramètres actuels                      |
+| Route                  | Purpose                                       |
+| ---------------------- | --------------------------------------------- |
+| `/login`               | Admin authentication (credentials + TOTP)     |
+| `/(admin)/dashboard`   | System overview: active bots, revenue, health |
+| `/(admin)/bots`        | Bot listing, creation, start/stop controls    |
+| `/(admin)/finance`     | Financial reports, P&L breakdown, withdrawals |
+| `/(admin)/allocations` | Capital allocation per bot, strategy weights  |
+| `/(admin)/audit`       | Audit log with filtering and search           |
+| `/(admin)/security`    | IP whitelist, API keys, threat monitoring     |
+| `/(admin)/users`       | User listing, role assignment, ban/unban      |
+| `/(admin)/database`    | Database stats, migration status, backups     |
+| `/(admin)/settings`    | System configuration, feature flags           |
+| `/(admin)/rentals`     | Bot rental marketplace management             |
 
-> **SupremeMother** : Le dashboard affiche l'état de la SupremeMother (observation passive, signaux de sagesse, influence émise).
-> Ces données sont visibles **uniquement par l'admin/créateur**, jamais exposées aux utilisateurs réguliers.
-> La SupremeMother observe les bots, apprend de leurs résultats et émet des signaux d'influence — les bots conservent leur **libre arbitre**.
+## Authentication
 
-## Structure du projet
+Admin access requires triple authentication:
 
-```
-src/
-├── lib/
-│   ├── api/
-│   │   └── client.ts          # Client API admin (AdminApiClient)
-│   ├── components/
-│   │   ├── auth/              # CredentialsForm, TotpForm, HardwareKeyForm
-│   │   └── ui/                # Card, Button, Input, Alert, DataTable, Toast
-│   ├── stores/
-│   │   ├── auth.ts            # authStore, toastStore, securityAlertsStore
-│   │   └── ...
-│   ├── security/              # Device fingerprint, lockout, security events
-│   └── config/                # API base URL, env config
-├── routes/
-│   ├── +page.svelte           # Redirect → /login
-│   ├── login/+page.svelte     # Page login triple auth
-│   └── (admin)/               # Route group (layout protégé)
-│       ├── +layout.svelte     # Layout principal avec Sidebar + Toast
-│       ├── dashboard/+page.svelte
-│       ├── bots/+page.svelte
-│       ├── users/+page.svelte
-│       ├── allocations/+page.svelte
-│       ├── rentals/+page.svelte
-│       ├── finance/+page.svelte
-│       ├── security/+page.svelte
-│       ├── audit/+page.svelte
-│       ├── database/+page.svelte
-│       └── settings/+page.svelte
-└── hooks.server.ts            # Proxy API (injection X-Admin-Secret)
-```
+1. **Credentials** — Username and password (Argon2id hashed)
+2. **TOTP** — Time-based one-time password (RFC 6238)
+3. **Hardware key** — Optional WebAuthn/FIDO2 support
 
-## Installation & Développement
+JWT tokens are issued by the ManulCore backend and validated in `hooks.server.ts`.
+
+## Development
 
 ```bash
-cd manul-core-admin
+# Install dependencies
 npm install
-npm run dev     # http://localhost:5173
-```
 
-## Build Production
+# Start development server
+npm run dev
 
-```bash
+# Type checking
+npm run check
+
+# Production build
 npm run build
 npm run preview
 ```
 
-## Docker
+## Deployment
+
+### Cloudflare Pages
 
 ```bash
-docker build -t manulcore-admin .
-docker run -p 3001:3000 manulcore-admin
+npx wrangler pages deploy .svelte-kit/cloudflare --project-name=manul-core-admin
 ```
 
-## Variables d'environnement
+### Docker
 
 ```bash
-# Configuration API
-PUBLIC_API_URL=https://api.manulcore.io     # URL du backend REST
-PUBLIC_WS_URL=wss://api.manulcore.io/ws     # URL du backend WebSocket
-ADMIN_SECRET=your_admin_secret              # Injecté par le proxy serveur SvelteKit (X-Admin-Secret)
+docker build -t manul-core-admin .
+docker-compose up -d
 ```
 
-## Système de notifications
+### Kubernetes
 
-Le panel utilise un système de **toast notifications** (`toastStore`) :
-
-```typescript
-toastStore.add('success', 'Operation completed');
-toastStore.add('error', 'Something went wrong');
-toastStore.add('info', 'Read-only: no modifications allowed');
-toastStore.add('warning', 'Attention required');
+```bash
+kubectl apply -f k8s/
 ```
 
-> Signature : `toastStore.add(type, message)` — type en premier, message en second.
+## Environment
+
+The dashboard connects to the ManulCore backend API. Configure the API base URL in `src/lib/config.ts`.

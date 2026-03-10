@@ -94,7 +94,6 @@
         stats.avgDuration = `${avgDays.toFixed(1)} days`;
       }
     } catch (error) {
-      console.error('Failed to load rentals:', error);
       toastStore.add('error', 'Failed to load rental data');
     } finally {
       loading = false;

@@ -239,13 +239,6 @@ export function logSecurityEvent(
   context: Partial<SecurityContext>,
   details?: Record<string, unknown>,
 ): void {
-  console.log('[SECURITY]', {
-    event,
-    timestamp: new Date().toISOString(),
-    ...context,
-    ...details,
-  });
-
   // In production, send to backend:
   // fetch('/api/admin/security/log', { ... })
 }

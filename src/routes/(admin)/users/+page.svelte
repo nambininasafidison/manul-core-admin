@@ -68,7 +68,6 @@
       stats.bannedUsers = users.filter((u) => u.status === 'banned').length;
       stats.totalCapital = users.reduce((sum, u) => sum + u.balance, 0);
     } catch (error) {
-      console.error('Failed to load users:', error);
       toastStore.add('error', 'Failed to load users');
     } finally {
       loading = false;
