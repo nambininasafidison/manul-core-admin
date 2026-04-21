@@ -1,141 +1,135 @@
-# ManulCore Admin Dashboard
+# ManulCore Admin (`manul-core-admin`)
 
-Administration dashboard for the ManulCore autonomous trading platform. Built with SvelteKit 2, Svelte 5, and TailwindCSS 4. Deployed on Cloudflare Pages.
+Frontend d'administration SvelteKit connecté au backend Rust `manul-core`.
 
-## Tech Stack
+## Stack
 
-| Layer      | Technology                                        |
-| ---------- | ------------------------------------------------- |
-| Framework  | SvelteKit 2 (`@sveltejs/kit` ^2.49)               |
-| UI         | Svelte 5 (`svelte` ^5.45)                         |
-| Styling    | TailwindCSS 4 + `@tailwindcss/forms`              |
-| Icons      | Lucide Svelte                                     |
-| State      | TanStack Svelte Query v6                          |
-| Validation | Zod v4                                            |
-| Auth       | JWT (`jose`), TOTP (`otpauth`/`otplib`), QR codes |
-| Password   | Argon2 (`argon2` ^0.44)                           |
-| Adapter    | Cloudflare Pages                                  |
-| Bundler    | Vite 7                                            |
-| Language   | TypeScript 5.9                                    |
+| Couche    | Technologie                    |
+| --------- | ------------------------------ |
+| Framework | SvelteKit `^2.49.1`            |
+| UI        | Svelte `^5.45.6`               |
+| Styling   | TailwindCSS `^4.1.18`          |
+| Build     | Vite `^7.2.6`                  |
+| Adapter   | `@sveltejs/adapter-cloudflare` |
+| Typage    | TypeScript `^5.9.3`            |
 
-## Project Structure
-
-```
-manul-core-admin/
-├── src/
-│   ├── app.html                 # HTML shell
-│   ├── app.css                  # Global styles (TailwindCSS)
-│   ├── hooks.server.ts          # Server hooks (auth middleware)
-│   ├── lib/
-│   │   ├── api/                 # Backend API client functions
-│   │   ├── assets/              # Static assets (images, logos)
-│   │   ├── components/          # Reusable Svelte components
-│   │   ├── security/            # Security utilities (TOTP, hashing)
-│   │   ├── stores/              # Svelte stores (auth state, settings)
-│   │   ├── types/               # TypeScript type definitions
-│   │   ├── utils/               # Utility functions
-│   │   ├── config.ts            # API base URL, environment config
-│   │   └── index.ts             # Library barrel exports
-│   └── routes/
-│       ├── +layout.svelte       # Root layout
-│       ├── +page.svelte         # Landing / redirect
-│       ├── api/                  # Server-side API routes
-│       ├── login/                # Admin login page
-│       └── (admin)/              # Protected route group
-│           ├── +layout.svelte    # Admin layout (sidebar, header)
-│           ├── allocations/      # Bot capital allocation management
-│           ├── audit/            # Audit log viewer
-│           ├── bots/             # Bot management (create, monitor, control)
-│           ├── dashboard/        # System overview, metrics, charts
-│           ├── database/         # Database administration
-│           ├── finance/          # Financial reports, P&L, revenue
-│           ├── rentals/          # Bot rental marketplace management
-│           ├── security/         # Security settings, IP blocking, keys
-│           ├── settings/         # System configuration
-│           └── users/            # User management, roles, bans
-├── static/
-│   └── robots.txt
-├── k8s/                          # Kubernetes manifests
-│   ├── configmap.yaml
-│   ├── deployment.yaml
-│   ├── hpa.yaml                  # Horizontal Pod Autoscaler
-│   ├── ingress.yaml
-│   ├── namespace.yaml
-│   ├── secrets.yaml
-│   └── service.yaml
-├── docker-compose.yml
-├── Dockerfile
-├── package.json
-├── svelte.config.js
-├── tsconfig.json
-├── vite.config.ts
-└── wrangler.jsonc                # Cloudflare Workers config
-```
-
-## Pages
-
-| Route                  | Purpose                                       |
-| ---------------------- | --------------------------------------------- |
-| `/login`               | Admin authentication (credentials + TOTP)     |
-| `/(admin)/dashboard`   | System overview: active bots, revenue, health |
-| `/(admin)/bots`        | Bot listing, creation, start/stop controls    |
-| `/(admin)/finance`     | Financial reports, P&L breakdown, withdrawals |
-| `/(admin)/allocations` | Capital allocation per bot, strategy weights  |
-| `/(admin)/audit`       | Audit log with filtering and search           |
-| `/(admin)/security`    | IP whitelist, API keys, threat monitoring     |
-| `/(admin)/users`       | User listing, role assignment, ban/unban      |
-| `/(admin)/database`    | Database stats, migration status, backups     |
-| `/(admin)/settings`    | System configuration, feature flags           |
-| `/(admin)/rentals`     | Bot rental marketplace management             |
-
-## Authentication
-
-Admin access requires triple authentication:
-
-1. **Credentials** — Username and password (Argon2id hashed)
-2. **TOTP** — Time-based one-time password (RFC 6238)
-3. **Hardware key** — Optional WebAuthn/FIDO2 support
-
-JWT tokens are issued by the ManulCore backend and validated in `hooks.server.ts`.
-
-## Development
+## Scripts (`package.json`)
 
 ```bash
-# Install dependencies
-npm install
-
-# Start development server
 npm run dev
-
-# Type checking
+npm run build
+npm run preview
 npm run check
+npm run check:watch
+```
 
-# Production build
+## Structure Réelle
+
+```text
+src/
+    lib/
+        api/
+        assets/
+        components/
+        security/
+        stores/
+        types/
+        utils/
+        config.ts
+    routes/
+        +layout.svelte
+        +page.svelte
+        login/+page.svelte
+        api/admin/[...path]/+server.ts
+        (admin)/
+            +layout.svelte
+            dashboard/+page.svelte
+            bots/+page.svelte
+            finance/+page.svelte
+            allocations/+page.svelte
+            audit/+page.svelte
+            security/+page.svelte
+            users/+page.svelte
+            database/+page.svelte
+            settings/+page.svelte
+            rentals/+page.svelte
+```
+
+## Routage UI
+
+| Route                           | Usage                |
+| ------------------------------- | -------------------- |
+| `/login`                        | Auth admin           |
+| `/dashboard` (groupe `(admin)`) | Vue système          |
+| `/bots`                         | Gestion bots         |
+| `/finance`                      | Finance admin        |
+| `/allocations`                  | Allocation bots      |
+| `/audit`                        | Audit trails         |
+| `/security`                     | Sécurité             |
+| `/users`                        | Gestion utilisateurs |
+| `/database`                     | État base            |
+| `/settings`                     | Paramétrage          |
+| `/rentals`                      | Gestion rentals      |
+
+## Intégration API
+
+### Config frontend
+
+`src/lib/config.ts` expose:
+
+- `apiUrl` (défaut `http://localhost:8080`, via `PUBLIC_API_URL`)
+- `apiBase` (`/api/admin`)
+- `wsUrl` (défaut `ws://localhost:8080/ws`, via `PUBLIC_WS_URL`)
+- `sessionTimeout` (constant `30` minutes)
+
+### Proxy serveur admin
+
+Le endpoint SvelteKit `src/routes/api/admin/[...path]/+server.ts`:
+
+- proxy les requêtes `/api/admin/*` vers le backend Rust
+- injecte `X-Admin-Secret` depuis `ADMIN_SECRET` (variable privée serveur)
+- ne divulgue jamais ce secret au navigateur
+
+`src/hooks.server.ts` place également `adminSecret` dans `event.locals` côté serveur.
+
+### Proxy Vite en dev
+
+`vite.config.ts` configure un proxy local vers `PUBLIC_API_URL` pour:
+
+- `/api`
+- `/graphql`
+- `/ws` (WebSocket)
+
+Port dev admin: `5174`.
+
+## Variables D'environnement Utiles
+
+| Variable         | Type           | Effet                                               |
+| ---------------- | -------------- | --------------------------------------------------- |
+| `PUBLIC_API_URL` | Public         | URL backend cible                                   |
+| `PUBLIC_WS_URL`  | Public         | URL WebSocket cible                                 |
+| `ADMIN_SECRET`   | Privée serveur | Header `X-Admin-Secret` injecté dans le proxy admin |
+
+## Build Et Déploiement
+
+### Build local
+
+```bash
+npm install
 npm run build
 npm run preview
 ```
 
-## Deployment
+### Cloudflare
 
-### Cloudflare Pages
+Le projet est configuré avec l'adapter Cloudflare (`svelte.config.js`) et `wrangler.jsonc`.
+
+Exemple deployment Pages:
 
 ```bash
 npx wrangler pages deploy .svelte-kit/cloudflare --project-name=manul-core-admin
 ```
 
-### Docker
+### Docker / K8s
 
-```bash
-docker build -t manul-core-admin .
-docker-compose up -d
-```
-
-### Kubernetes
-
-```bash
-kubectl apply -f k8s/
-```
-
-## Environment
-
-The dashboard connects to the ManulCore backend API. Configure the API base URL in `src/lib/config.ts`.
+Les fichiers `Dockerfile`, `docker-compose.yml` et `k8s/*.yaml` sont présents dans le projet pour un packaging/déploiement infra.
