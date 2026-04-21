@@ -16,11 +16,11 @@ Frontend d'administration SvelteKit connecté au backend Rust `manul-core`.
 ## Scripts (`package.json`)
 
 ```bash
-npm run dev
-npm run build
-npm run preview
-npm run check
-npm run check:watch
+bun run dev
+bun run build
+bun run preview
+bun run check
+bun run check:watch
 ```
 
 ## Structure Réelle
@@ -115,9 +115,9 @@ Port dev admin: `5174`.
 ### Build local
 
 ```bash
-npm install
-npm run build
-npm run preview
+bun install
+bun run build
+bun run preview
 ```
 
 ### Cloudflare
